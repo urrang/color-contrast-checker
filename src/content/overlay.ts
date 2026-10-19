@@ -30,6 +30,7 @@ export function createOverlay() {
     outline.hidden = true;
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
+    tooltip.hidden = true;
     shadow.append(css, outline, tooltip);
     document.documentElement.append(host);
     host.showPopover();
@@ -65,6 +66,7 @@ export function createOverlay() {
         unavailable: boolean,
         targetLabel: ElementLabel | null,
     ) {
+        tooltip.hidden = false;
         tooltip.replaceChildren();
         tooltip.dataset.status = unavailable
             ? 'unavailable'

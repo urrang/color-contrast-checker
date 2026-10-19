@@ -17,7 +17,7 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 
 - Click the toolbar action to toggle inspection in the current tab.
 - The suggested shortcut is **Command+Shift+Y** on macOS and **Ctrl+Shift+Y** elsewhere. Check or change its assignment at `chrome://extensions/shortcuts`; Chrome may leave a conflicting shortcut unassigned.
-- Point at an element. Native hover styles and hover menus still work. The deepest reachable element stays selected; the inspector does not search parents or children for a label.
+- Move the pointer over an element to show the tooltip. Native hover styles and hover menus still work. The deepest reachable element stays selected; the inspector does not search parents or children for a label.
 - The tooltip header identifies the selected element as `tag#id.class1.class2`. Long headers are limited to three lines. Pinning keeps the displayed identity with the result snapshot.
 - Values refresh on pointer movement and scrolling, and again when transitions or animations running on the element or its ancestors finish. Changes made by page scripts while the pointer is still show up on the next movement.
 - Primary-click to pin the displayed result. Click again to resume. Both gestures consume pointer-down/up, mouse-down/up, and click events so normal page controls do not activate or gain focus. Scrolling and the context menu remain available.

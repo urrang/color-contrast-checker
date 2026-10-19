@@ -24,7 +24,8 @@ test('action toggles the built script repeatedly and Escape cleans up', async ({
     for (let i = 0; i < 3; i++) {
         await toggle(page);
         await expect(page.locator(overlaySelector)).toHaveCount(1);
-        await point(page, '#plain');
+        await expect(page.locator(tooltipSelector)).toBeHidden();
+        await point(page, '#plain', i);
         await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
         await toggle(page);
         await expect(page.locator(overlaySelector)).toHaveCount(0);

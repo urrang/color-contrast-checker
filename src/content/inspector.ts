@@ -26,13 +26,14 @@ function start() {
     let result: Result | null = null;
     let targetLabel: ElementLabel | null = null;
     let pinned = false;
-    let x = Math.round(innerWidth / 2);
-    let y = Math.round(innerHeight / 2);
+    let pointer: { x: number; y: number } | null = null;
     let frame = 0;
 
     // Script-driven page changes are picked up on the next pointer movement or scroll.
     function update() {
         frame = 0;
+        if (!pointer) return;
+        const { x, y } = pointer;
         if (!pinned) {
             const next = targetAt(x, y);
             result = next ? assessElement(next) : null;
@@ -77,12 +78,11 @@ function start() {
             return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        if (event.type !== 'click') return;
+        if (event.type !== 'click' || !target) return;
         // Pinning keeps the result already on screen; unpinning reassesses at the click position.
         pinned = !pinned;
         if (!pinned) {
-            x = event.clientX;
-            y = event.clientY;
+            pointer = { x: event.clientX, y: event.clientY };
         }
         schedule();
     }
@@ -98,8 +98,7 @@ function start() {
         'pointermove',
         (event) => {
             if (!pinned) {
-                x = event.clientX;
-                y = event.clientY;
+                pointer = { x: event.clientX, y: event.clientY };
             }
             schedule();
         },
@@ -108,10 +107,9 @@ function start() {
     window.addEventListener(
         'pointerout',
         (event) => {
-            if (pinned) return;
+            if (pinned || !pointer) return;
             // Movement inside frames does not bubble into the top-level document.
-            x = event.clientX;
-            y = event.clientY;
+            pointer = { x: event.clientX, y: event.clientY };
             schedule();
         },
         { capture: true, passive: true, signal },
@@ -137,7 +135,6 @@ function start() {
     window.addEventListener('resize', schedule, { passive: true, signal });
     window.addEventListener('pagehide', stop, { once: true, signal });
     window.__contrastInspector = { stop };
-    schedule();
 }
 
 if (window.__contrastInspector) window.__contrastInspector.stop();
