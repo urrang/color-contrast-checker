@@ -1,0 +1,29 @@
+{
+  "name": "contrast-inspector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && vite build --mode content",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:browser": "npm run build && playwright test",
+    "check": "npm run lint && npm run typecheck && npm test && npm run test:browser"
+  },
+  "dependencies": {
+    "culori": "^4.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.64.1",
+    "@types/chrome": "^0.1.27",
+    "@types/culori": "^4.0.1",
+    "@types/node": "^24.10.0",
+    "eslint": "^9.39.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "vite": "^7.2.2",
+    "vitest": "^4.0.8"
+  }
+}

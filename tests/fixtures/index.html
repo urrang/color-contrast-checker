@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Contrast Inspector fixtures</title>
+<style>
+  html { background: white; color: black; font: 16px/1.5 system-ui; }
+  body { margin: 20px; }
+  main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .sample { display: block; padding: 12px; min-height: 48px; }
+  button, a { font: inherit; }
+  #plain { background: white; color: black; }
+  #pass { background: #bce8dc; color: #333; }
+  #fail { background: white; color: #aaa; }
+  #hover { background: black; color: white; border: 0; }
+  #hover:hover { background: #fff; color: #000; }
+  #parent { background: #bce8dc; color: #333; }
+  #nested { background: transparent; }
+  #alpha-parent { background: rgb(255 0 0 / 50%); }
+  #alpha { background: rgb(0 0 255 / 50%); color: rgb(0 0 0 / 50%); }
+  #transition { background: black; color: white; transition: color .35s, background-color .35s; border: 0; }
+  #transition:hover { background: white; color: black; }
+  #gradient { background: linear-gradient(white, #eee); }
+  #empty { border: 1px solid #aaa; }
+  #mixed span { color: red; }
+  #generated::before { content: 'Generated'; }
+  #pseudo::after { content: ''; position: absolute; inset: 0; background: #fff5; pointer-events: none; }
+  #pseudo { position: relative; }
+  #positioned-parent { background: red; position: relative; }
+  #positioned { position: absolute; left: 350px; }
+  #image-page { background: linear-gradient(red, blue); }
+  #opaque { background: white; color: black; }
+  #opacity { opacity: .8; }
+  #filter { filter: brightness(.9); }
+  .card { background: white; color: black; }
+  #p3 { color: color(display-p3 .3 .3 .3); }
+  #p3-out { color: color(display-p3 1 0 0); }
+  #lab { color: lab(30% 0 0); }
+  #lch { color: lch(30% 0 90); }
+  #oklab { color: oklab(.4 0 0); }
+  #oklch { color: oklch(.4 0 90); }
+  #srgb { color: color(srgb .3 .3 .3 / .8); }
+  #unsupported { color: color(rec2020 .3 .3 .3); }
+  #contents { display: contents; background: red; }
+  #blend { mix-blend-mode: multiply; }
+  #background-blend { background: white; background-blend-mode: multiply; }
+  #backdrop-filter { backdrop-filter: blur(1px); }
+  #clip { clip-path: inset(0); }
+  #text-shadow { text-shadow: 1px 1px black; }
+  #first-letter::first-letter { color: red; }
+  #empty-pseudo::before { content: ''; }
+  #mixed-background b { background: red; }
+  #overflow { width: 40px; white-space: nowrap; background: white; }
+  #large { font-size: 24px; }
+  #bold-large { font-size: 18.666666666666668px; font-weight: 700; }
+  #almost-large { font-size: 18.666px; font-weight: 700; }
+  #hover-menu:hover #menu { display: block; }
+  #menu { display: none; background: white; color: black; padding: 8px; }
+  dialog, [popover] { background: white; color: black; padding: 30px; border: 2px solid #222; }
+  #high { position: fixed; right: 0; bottom: 0; z-index: 2147483647; background: white; }
+  #spacer { height: 950px; }
+  iframe { width: 250px; height: 100px; }
+</style>
+<h1>Contrast Inspector fixtures</h1>
+<input id="focus" aria-label="Focus sentinel">
+<main>
+  <div id="plain" class="sample">Black on white</div>
+  <div id="pass" class="sample">Passing text</div>
+  <div id="fail" class="sample">Failing text</div>
+  <button id="hover" class="sample">Native hover</button>
+  <div id="parent"><span id="nested" class="sample">Transparent child</span></div>
+  <div id="alpha-parent"><span id="alpha" class="sample">Alpha layers</span></div>
+  <open-sample id="shadow"></open-sample>
+  <slot-sample><span id="slotted" slot="label">Slotted text</span></slot-sample>
+  <button id="transition" class="sample">Transition text</button>
+  <div id="gradient" class="sample">Gradient text</div>
+  <a href="#activated" id="navigate" class="sample">Navigation link</a>
+  <button id="pointer-action" class="sample">Pointer-down action</button>
+  <div id="empty" class="sample"></div>
+  <div id="icon" class="sample"><svg width="20" height="20"><circle cx="10" cy="10" r="8"/></svg></div>
+  <div id="descendant" class="sample"><span id="child">Child-owned text</span></div>
+  <div id="mixed" class="sample">Own text <span>different text</span></div>
+  <div id="generated" class="sample"></div>
+  <div id="pseudo" class="sample">Painted pseudo</div>
+  <svg id="svg" width="200" height="40"><text x="0" y="25">SVG text</text></svg>
+  <canvas id="canvas" width="200" height="40">Fallback text</canvas>
+  <div id="image-page"><div id="opaque" class="sample">Opaque card</div></div>
+  <div id="opacity"><div id="opacity-card" class="sample card">Opacity group</div></div>
+  <div id="filter"><div id="filter-card" class="sample card">Filter group</div></div>
+  <div id="p3" class="sample">In-gamut P3</div>
+  <div id="p3-out" class="sample">Out-of-gamut P3</div>
+  <div id="lab" class="sample">Lab text</div>
+  <div id="lch" class="sample">LCH text</div>
+  <div id="oklab" class="sample">OKLab text</div>
+  <div id="oklch" class="sample">OKLCH text</div>
+  <div id="srgb" class="sample">sRGB text</div>
+  <div id="unsupported" class="sample">Unsupported color</div>
+  <div id="contents"><span id="contents-child" class="sample">Display contents parent</span></div>
+  <iframe id="same-frame" src="/frame.html"></iframe>
+  <iframe id="cross-frame" src="http://localhost:4173/frame.html"></iframe>
+  <div id="blend" class="sample">Blended text</div>
+  <div id="background-blend" class="sample">Background blend</div>
+  <div id="backdrop-filter" class="sample">Backdrop filter</div>
+  <div id="clip" class="sample">Clipped text</div>
+  <div id="text-shadow" class="sample">Shadowed text</div>
+  <div id="first-letter" class="sample">Styled first letter</div>
+  <div id="empty-pseudo" class="sample"></div>
+  <div id="large" class="sample">Large text</div>
+  <div id="bold-large" class="sample">Bold large text</div>
+  <div id="almost-large" class="sample">Normal bold text</div>
+  <div id="hover-menu" class="sample">Hover menu<div id="menu">Open menu text</div></div>
+  <div id="positioned-parent"><span id="positioned">Outside parent background</span></div>
+  <div id="mixed-background" class="sample">Own text <b><span>Nested background</span></b></div>
+  <div id="overflow" class="sample">Text outside its own background</div>
+</main>
+<div id="spacer"></div>
+<div id="bottom" class="sample">Bottom corner</div>
+<div id="high">High z-index</div>
+<dialog id="dialog"><div id="dialog-text">Dialog text</div></dialog>
+<div id="page-popover" popover="manual"><div id="popover-text">Popover text</div></div>
+<script>
+  customElements.define('open-sample', class extends HTMLElement {
+    constructor() {
+      super();
+      const root = this.attachShadow({ mode: 'open' });
+      root.innerHTML = '<style>:host{display:block;background:#bce8dc;color:#333}span{display:block;padding:12px}</style><div><span id="shadow-text">Open shadow text</span></div>';
+    }
+  });
+  customElements.define('slot-sample', class extends HTMLElement {
+    constructor() {
+      super();
+      this.attachShadow({ mode: 'open' }).innerHTML = '<style>:host{display:block}div{background:#bce8dc;color:#333;padding:12px}slot{display:contents}</style><div><slot name="label"></slot></div>';
+    }
+  });
+  window.actions = { pointerdown: 0, mousedown: 0, pointerup: 0, mouseup: 0, click: 0, contextmenu: 0 };
+  for (const type of Object.keys(window.actions)) {
+    document.querySelector('#pointer-action').addEventListener(type, () => { window.actions[type]++; });
+  }
+  const mode = new URLSearchParams(location.search).get('canvas');
+  if (mode === 'dark') { document.documentElement.style.background = '#111'; document.documentElement.style.color = '#fff'; }
+  if (mode === 'body') { document.documentElement.style.background = 'transparent'; document.body.style.background = '#111'; document.body.style.color = '#fff'; }
+  if (mode === 'alpha') { document.documentElement.style.background = '#000'; document.body.style.background = 'rgb(255 255 255 / .5)'; }
+  if (mode === 'unknown') { document.documentElement.style.background = 'transparent'; document.body.style.background = 'rgb(255 255 255 / .5)'; }
+</script>
+</html>
