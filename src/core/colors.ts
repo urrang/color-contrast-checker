@@ -68,7 +68,6 @@ export function assessColors(
         status: 'assessed',
         foreground: effectiveText,
         background,
-        font,
         ratio,
         ...thresholds(ratio, font),
     };

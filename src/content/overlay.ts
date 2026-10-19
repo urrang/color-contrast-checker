@@ -3,12 +3,6 @@ import type { Result } from '../core/types';
 import { toTopRect } from './targeting';
 import styles from './overlay.css?inline';
 
-export type ElementLabel = {
-    tag: string;
-    id: string;
-    classes: string[];
-};
-
 export function createOverlay() {
     const host = document.createElement('contrast-inspector-overlay');
     host.setAttribute('popover', 'manual');
@@ -63,22 +57,22 @@ export function createOverlay() {
         tooltip.append(line);
     }
 
-    function render(result: Result | null, targetLabel: ElementLabel | null) {
+    function render(result: Result | null, target: Element | null) {
         tooltip.hidden = false;
         tooltip.replaceChildren();
         tooltip.dataset.status = result?.status ?? 'ready';
-        if (targetLabel) {
+        if (target) {
             const header = document.createElement('div');
             header.className = 'element-header';
             const label = document.createElement('div');
             label.className = 'element-label';
             const tag = document.createElement('span');
             tag.className = 'element-tag';
-            tag.textContent = targetLabel.tag;
+            tag.textContent = target.localName;
             label.append(tag);
             for (const [prefix, name] of [
-                ['#', targetLabel.id],
-                ...targetLabel.classes.map((name) => ['.', name]),
+                ['#', target.id],
+                ...Array.from(target.classList, (name) => ['.', name]),
             ]) {
                 if (!name) continue;
                 const punctuation = document.createElement('span');

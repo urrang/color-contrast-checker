@@ -6,7 +6,6 @@ export type Result =
           status: 'assessed';
           foreground: Color;
           background: Color;
-          font: Font;
           ratio: number;
           large: boolean;
           aa: boolean;

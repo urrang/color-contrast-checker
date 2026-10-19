@@ -30,13 +30,6 @@ function start() {
         const next = hit ? resolveTextTarget(hit) : null;
         if (next) listen(next.ownerDocument);
         const result = next ? assessElement(next) : null;
-        const targetLabel = next
-            ? {
-                  tag: next.localName,
-                  id: next.id,
-                  classes: Array.from(next.classList),
-              }
-            : null;
         const hovered = next?.matches(':hover') ?? false;
         // A new target or Shift changing its hover state can start transitions on its ancestry.
         if (next && (next !== target || hovered !== targetHovered)) {
@@ -51,7 +44,7 @@ function start() {
         targetHovered = hovered;
         // Puts the overlay back above dialogs and popovers the page opened since.
         overlay.raise();
-        overlay.render(result, targetLabel);
+        overlay.render(result, target);
         overlay.position(target, x, y);
     }
 
@@ -66,20 +59,14 @@ function start() {
         delete window.__contrastInspector;
     }
 
-    function eventPoint(event: MouseEvent) {
-        const owner = (event.currentTarget as Window).document;
-        const rect = toTopRect(
-            owner,
-            new DOMRect(event.clientX, event.clientY, 0, 0),
-        );
-        return rect ? { x: rect.x, y: rect.y } : null;
-    }
-
     function move(event: PointerEvent) {
         // Layout-triggered pointerout events can report shiftKey=false while Shift is held.
         if (event.type === 'pointermove')
             overlay.letHoverThrough(event.shiftKey);
-        pointer = eventPoint(event);
+        pointer = toTopRect(
+            (event.currentTarget as Window).document,
+            new DOMRect(event.clientX, event.clientY, 0, 0),
+        );
         schedule();
     }
 

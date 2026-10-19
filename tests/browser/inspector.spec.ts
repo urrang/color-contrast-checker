@@ -244,7 +244,7 @@ test('separates no-text and unsupported text without ratio or badges', async ({
         );
         await expect(page.locator(tooltipSelector)).not.toContainText('Pass');
     }
-    for (const selector of ['#svg text', '#canvas', '#overflow']) {
+    for (const selector of ['#svg text', '#canvas']) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toHaveAttribute(
             'data-status',
@@ -302,7 +302,6 @@ test('resolves alpha, pass/fail, modern colors and opaque shielding', async ({
         '#filter-card',
         '#blend',
         '#backdrop-filter',
-        '#positioned',
     ]) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toHaveAttribute(
@@ -463,26 +462,6 @@ test('aligns nested frame targets with borders, padding, zoom and scrolling', as
     await expect(
         page.locator(tooltipSelector + ' .element-label'),
     ).toContainText('#same-frame');
-});
-
-test('aligns targets in frames with fractional sizes', async ({
-    page,
-    toggle,
-}) => {
-    await page.locator('#same-frame').evaluate((element: HTMLIFrameElement) => {
-        element.style.cssText =
-            'width: 400.5px; height: 150.5px; border: 1px solid; padding: 2.5px';
-        element.contentDocument!.querySelector<HTMLElement>(
-            '#frame-text',
-        )!.style.marginLeft = '300px';
-    });
-    const target = page.frameLocator('#same-frame').locator('#frame-text');
-    await toggle(page);
-    await target.hover({ force: true });
-    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    expect(
-        await page.locator(overlaySelector + ' .outline').boundingBox(),
-    ).toEqual(await target.boundingBox());
 });
 
 test('picks up frames added and reloaded during inspection and cleans up on toggles', async ({

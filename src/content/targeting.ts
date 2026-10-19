@@ -20,22 +20,14 @@ export function ancestry(element: Element): Element[] {
 
 // Skip the overlay's pointer shield to find the page element beneath it.
 export function targetAt(x: number, y: number): Element | null {
-    let target =
-        document
-            .elementsFromPoint(x, y)
-            .find(
-                (element) => element.localName !== 'contrast-inspector-overlay',
-            ) ?? null;
+    const shield = document
+        .querySelector('contrast-inspector-overlay')
+        ?.shadowRoot?.querySelector<HTMLElement>('.shield');
+    shield?.style.setProperty('pointer-events', 'none', 'important');
+    let target = document.elementFromPoint(x, y);
     while (target) {
         if (target.shadowRoot) {
-            // Unlike elementsFromPoint, elementFromPoint preserves slotted text ownership.
-            // Briefly exclude our shield from this synchronous hit test.
-            const shield = document
-                .querySelector('contrast-inspector-overlay')
-                ?.shadowRoot?.querySelector<HTMLElement>('.shield');
-            shield?.style.setProperty('pointer-events', 'none', 'important');
             const inner = target.shadowRoot.elementFromPoint(x, y);
-            shield?.style.removeProperty('pointer-events');
             if (inner && inner !== target) {
                 target = inner;
                 continue;
@@ -56,6 +48,7 @@ export function targetAt(x: number, y: number): Element | null {
         }
         break;
     }
+    shield?.style.removeProperty('pointer-events');
     return target;
 }
 
@@ -117,21 +110,8 @@ function frameViewport(frame: HTMLIFrameElement) {
     const left =
         parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
     const top = parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop);
-    // offsetWidth/offsetHeight are rounded to integers, so derive the unscaled border box from computed style.
-    let width = parseFloat(style.width);
-    let height = parseFloat(style.height);
-    if (style.boxSizing !== 'border-box') {
-        width +=
-            left +
-            parseFloat(style.paddingRight) +
-            parseFloat(style.borderRightWidth);
-        height +=
-            top +
-            parseFloat(style.paddingBottom) +
-            parseFloat(style.borderBottomWidth);
-    }
-    const scaleX = rect.width / width;
-    const scaleY = rect.height / height;
+    const scaleX = rect.width / frame.offsetWidth;
+    const scaleY = rect.height / frame.offsetHeight;
     return {
         left: rect.left + left * scaleX,
         top: rect.top + top * scaleY,
