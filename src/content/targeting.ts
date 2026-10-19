@@ -17,18 +17,9 @@ export function ancestry(element: Element): Element[] {
     return elements;
 }
 
-export function targetAt(
-    x: number,
-    y: number,
-    host: HTMLElement,
-    path?: EventTarget[],
-): Element | null {
-    const fromPath = path?.find(
-        (node): node is Element => node instanceof Element && node !== host,
-    );
-    let target = fromPath ?? document.elementFromPoint(x, y);
-    if (target === host || target?.getRootNode() === host.shadowRoot)
-        return null;
+// The overlay is pointer-transparent, so hit testing never returns it.
+export function targetAt(x: number, y: number): Element | null {
+    let target = document.elementFromPoint(x, y);
     while (target?.shadowRoot) {
         const inner = target.shadowRoot.elementFromPoint(x, y);
         if (!inner || inner === target) break;

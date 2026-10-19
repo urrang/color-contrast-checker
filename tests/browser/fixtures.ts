@@ -68,13 +68,14 @@ export { expect };
 export const overlaySelector = 'contrast-inspector-overlay';
 export const tooltipSelector = overlaySelector + ' .tooltip';
 
-export async function point(page: Page, selector: string) {
+// A nonzero offset nudges the pointer within the same element, which makes the inspector pick up page changes.
+export async function point(page: Page, selector: string, offset = 0) {
     const locator = page.locator(selector);
     await locator.scrollIntoViewIfNeeded();
     const rect = await locator.boundingBox();
     if (!rect) throw new Error('Missing fixture: ' + selector);
     await page.mouse.move(
-        rect.x + Math.min(rect.width / 2, 70),
+        rect.x + Math.min(rect.width / 2, 70) + offset,
         rect.y + rect.height / 2,
     );
 }

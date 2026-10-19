@@ -81,9 +81,6 @@
         #mixed span {
             color: red;
         }
-        #generated::before {
-            content: 'Generated';
-        }
         #pseudo::after {
             content: '';
             position: absolute;
@@ -140,7 +137,7 @@
         #srgb {
             color: color(srgb 0.3 0.3 0.3 / 0.8);
         }
-        #unsupported {
+        #rec2020 {
             color: color(rec2020 0.3 0.3 0.3);
         }
         #contents {
@@ -157,30 +154,8 @@
         #backdrop-filter {
             backdrop-filter: blur(1px);
         }
-        #clip {
-            clip-path: inset(0);
-        }
-        #text-shadow {
-            text-shadow: 1px 1px black;
-        }
-        .text-effects {
-            text-shadow: 1px 1px red;
-            -webkit-text-stroke: 1px red;
+        #text-fill {
             -webkit-text-fill-color: red;
-        }
-        .text-effects-cleared {
-            text-shadow: none;
-            -webkit-text-stroke: 0;
-            -webkit-text-fill-color: currentcolor;
-        }
-        #first-letter::first-letter {
-            color: red;
-        }
-        #empty-pseudo::before {
-            content: '';
-        }
-        #mixed-background b {
-            background: red;
         }
         #overflow {
             width: 40px;
@@ -260,7 +235,6 @@
         <div id="mixed" class="sample">
             Own text <span>different text</span>
         </div>
-        <div id="generated" class="sample"></div>
         <div id="pseudo" class="sample">Painted pseudo</div>
         <svg id="svg" width="200" height="40">
             <text x="0" y="25">SVG text</text>
@@ -282,7 +256,7 @@
         <div id="oklab" class="sample">OKLab text</div>
         <div id="oklch" class="sample">OKLCH text</div>
         <div id="srgb" class="sample">sRGB text</div>
-        <div id="unsupported" class="sample">Unsupported color</div>
+        <div id="rec2020" class="sample">Rec. 2020 text</div>
         <div id="contents">
             <span id="contents-child" class="sample"
                 >Display contents parent</span
@@ -296,24 +270,7 @@
         <div id="blend" class="sample">Blended text</div>
         <div id="background-blend" class="sample">Background blend</div>
         <div id="backdrop-filter" class="sample">Backdrop filter</div>
-        <div id="clip" class="sample">Clipped text</div>
-        <div id="text-shadow" class="sample">Shadowed text</div>
-        <div class="text-effects">
-            <div id="text-effects-cleared" class="sample text-effects-cleared">
-                Cleared text effects
-            </div>
-            <div id="text-effects-inherited" class="sample">
-                Inherited text effects
-            </div>
-        </div>
-        <div id="nested-text-effects" class="sample">
-            Text with a nested
-            <span class="text-effects"
-                ><span class="text-effects-cleared">cleared span</span></span
-            >
-        </div>
-        <div id="first-letter" class="sample">Styled first letter</div>
-        <div id="empty-pseudo" class="sample"></div>
+        <div id="text-fill" class="sample">Text fill color</div>
         <div id="large" class="sample">Large text</div>
         <div id="bold-large" class="sample">Bold large text</div>
         <div id="almost-large" class="sample">Normal bold text</div>
@@ -323,9 +280,6 @@
         </div>
         <div id="positioned-parent">
             <span id="positioned">Outside parent background</span>
-        </div>
-        <div id="mixed-background" class="sample">
-            Own text <b><span>Nested background</span></b>
         </div>
         <div id="overflow" class="sample">Text outside its own background</div>
     </main>
@@ -387,7 +341,7 @@
             document.documentElement.style.background = '#000';
             document.body.style.background = 'rgb(255 255 255 / .5)';
         }
-        if (mode === 'unknown') {
+        if (mode === 'translucent') {
             document.documentElement.style.background = 'transparent';
             document.body.style.background = 'rgb(255 255 255 / .5)';
         }

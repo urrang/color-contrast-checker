@@ -12,12 +12,11 @@ export type Result =
           aa: boolean;
           aaa: boolean;
       }
-    | { status: 'indeterminate'; reason: string; font?: Font }
+    | { status: 'indeterminate'; reason: string }
     | { status: 'no-text' };
 
 export type BackgroundLayer = {
     color: string;
     image?: boolean;
-    blend?: boolean;
     effect?: string;
 };

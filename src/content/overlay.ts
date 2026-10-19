@@ -1,37 +1,30 @@
 import { formatColor } from '../core/colors';
 import type { Result } from '../core/types';
+import styles from './overlay.css?inline';
+
+export type ElementLabel = {
+    tag: string;
+    id: string;
+    classes: string[];
+};
 
 export function createOverlay() {
     const host = document.createElement('contrast-inspector-overlay');
     host.setAttribute('popover', 'manual');
     host.setAttribute('aria-hidden', 'true');
     // Inline !important also protects the host from page-wide author CSS.
-    host.style.cssText = `all: initial !important; position: fixed !important; inset: 0 !important;
-    width: 100% !important; height: 100% !important; margin: 0 !important; padding: 0 !important;
-    border: 0 !important; overflow: visible !important; background: transparent !important;
-    pointer-events: none !important; visibility: visible !important; opacity: 1 !important;
-    transform: none !important; zoom: 1 !important; color-scheme: only light !important;`;
+    host.style.cssText = `
+        all: initial !important;
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        pointer-events: none !important;
+        color-scheme: only light !important;
+    `;
     const shadow = host.attachShadow({ mode: 'open' });
     const css = document.createElement('style');
-    css.textContent = `
-    :host::backdrop { background: transparent !important; pointer-events: none !important; }
-    * { box-sizing: border-box; pointer-events: none !important; }
-    .outline { position: fixed; border: 2px solid #7961ff; box-shadow: 0 0 0 1px #fff;
-      border-radius: 2px; }
-    .tooltip { position: fixed; width: 268px; max-width: calc(100vw - 16px);
-      max-height: calc(100vh - 16px); overflow: hidden; padding: 12px 14px;
-      border: 1px solid #42444d; border-radius: 9px; background: #202127; color: #f7f7fa;
-      box-shadow: 0 5px 22px #0005; font: 12px/1.5 system-ui, sans-serif;
-      letter-spacing: normal; text-align: left; text-transform: none; white-space: normal;
-      overflow-wrap: anywhere; }
-    .row { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
-    .label { color: #c1c3cd; }
-    .value { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
-    .swatch { display: inline-block; width: 11px; height: 11px; border: 1px solid #ffffff80; border-radius: 2px; }
-    .status { margin-top: 7px; color: #c1c3cd; font-size: 11px; }
-    .pass { color: #a5ecc4; } .fail { color: #ffb2b2; }
-    [hidden] { display: none !important; }
-  `;
+    css.textContent = styles;
     const outline = document.createElement('div');
     outline.className = 'outline';
     outline.hidden = true;
@@ -70,12 +63,35 @@ export function createOverlay() {
         result: Result | null,
         pinned: boolean,
         unavailable: boolean,
+        targetLabel: ElementLabel | null,
     ) {
         tooltip.replaceChildren();
         tooltip.dataset.status = unavailable
             ? 'unavailable'
             : (result?.status ?? 'ready');
         host.dataset.pinned = String(pinned);
+        if (targetLabel) {
+            const header = document.createElement('div');
+            header.className = 'element-header';
+            const label = document.createElement('div');
+            label.className = 'element-label';
+            const tag = document.createElement('span');
+            tag.className = 'element-tag';
+            tag.textContent = targetLabel.tag;
+            label.append(tag);
+            for (const [prefix, name] of [
+                ['#', targetLabel.id],
+                ...targetLabel.classes.map((name) => ['.', name]),
+            ]) {
+                if (!name) continue;
+                const punctuation = document.createElement('span');
+                punctuation.className = 'element-punctuation';
+                punctuation.textContent = prefix;
+                label.append(punctuation, document.createTextNode(name));
+            }
+            header.append(label);
+            tooltip.append(header);
+        }
         if (unavailable) row('Status', 'Element no longer available');
         else if (!result) row('Status', 'Point at text to inspect');
         else if (result.status === 'no-text')
@@ -89,16 +105,10 @@ export function createOverlay() {
             reason.textContent = result.reason;
             tooltip.append(reason);
         } else {
-            row(
-                'Foreground',
-                formatColor(result.foreground),
-                formatColor(result.foreground),
-            );
-            row(
-                'Background',
-                formatColor(result.background),
-                formatColor(result.background),
-            );
+            const foreground = formatColor(result.foreground);
+            const background = formatColor(result.background);
+            row('Foreground', foreground, foreground);
+            row('Background', background, background);
             row('Contrast', result.ratio.toFixed(2) + ':1');
             const size = result.large ? 'large' : 'normal';
             row(
@@ -155,5 +165,5 @@ export function createOverlay() {
         host.showPopover();
     }
 
-    return { host, render, position, raise, remove: () => host.remove() };
+    return { render, position, raise, remove: () => host.remove() };
 }

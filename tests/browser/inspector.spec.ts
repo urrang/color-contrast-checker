@@ -151,12 +151,7 @@ test('separates no-text and unsupported text without ratio or badges', async ({
     toggle,
 }) => {
     await toggle(page);
-    for (const selector of [
-        '#empty',
-        '#icon',
-        '#descendant',
-        '#empty-pseudo',
-    ]) {
+    for (const selector of ['#empty', '#icon', '#descendant']) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toContainText(
             'No inspectable text',
@@ -166,15 +161,7 @@ test('separates no-text and unsupported text without ratio or badges', async ({
         );
         await expect(page.locator(tooltipSelector)).not.toContainText('Pass');
     }
-    for (const selector of [
-        '#mixed',
-        '#mixed-background',
-        '#generated',
-        '#pseudo',
-        '#svg text',
-        '#canvas',
-        '#overflow',
-    ]) {
+    for (const selector of ['#svg text', '#canvas', '#overflow']) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toHaveAttribute(
             'data-status',
@@ -185,11 +172,13 @@ test('separates no-text and unsupported text without ratio or badges', async ({
         );
         await expect(page.locator(tooltipSelector)).not.toContainText('Pass');
     }
-    await point(page, '#child');
-    await expect(page.locator(tooltipSelector)).toHaveAttribute(
-        'data-status',
-        'assessed',
-    );
+    for (const selector of ['#child', '#mixed']) {
+        await point(page, selector);
+        await expect(page.locator(tooltipSelector)).toHaveAttribute(
+            'data-status',
+            'assessed',
+        );
+    }
 });
 
 test('resolves alpha, pass/fail, modern colors and opaque shielding', async ({
@@ -212,7 +201,11 @@ test('resolves alpha, pass/fail, modern colors and opaque shielding', async ({
         '#oklab',
         '#oklch',
         '#srgb',
+        '#p3-out',
+        '#rec2020',
         '#opaque',
+        '#background-blend',
+        '#pseudo',
     ]) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toHaveAttribute(
@@ -222,16 +215,10 @@ test('resolves alpha, pass/fail, modern colors and opaque shielding', async ({
     }
     for (const selector of [
         '#gradient',
-        '#p3-out',
-        '#unsupported',
         '#opacity-card',
         '#filter-card',
         '#blend',
-        '#background-blend',
         '#backdrop-filter',
-        '#clip',
-        '#text-shadow',
-        '#first-letter',
         '#positioned',
     ]) {
         await point(page, selector);
@@ -249,30 +236,17 @@ test('resolves alpha, pass/fail, modern colors and opaque shielding', async ({
     }
     await point(page, '#almost-large');
     await expect(page.locator(tooltipSelector)).toContainText('AA normal');
-});
-
-test('checks inherited text effects on the text element, not on its ancestors', async ({
-    page,
-    toggle,
-}) => {
-    await toggle(page);
-    for (const selector of ['#text-effects-cleared', '#nested-text-effects']) {
-        await point(page, selector);
-        await expect(page.locator(tooltipSelector)).toHaveAttribute(
-            'data-status',
-            'assessed',
-        );
-        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    }
-    await point(page, '#text-effects-inherited');
-    await expect(page.locator(tooltipSelector)).toContainText('Text shadow');
+    await point(page, '#text-fill');
+    await expect(page.locator(tooltipSelector + ' .row').first()).toContainText(
+        '#FF0000',
+    );
 });
 
 for (const [mode, color] of [
     ['dark', '#111111'],
     ['body', '#111111'],
     ['alpha', '#808080'],
-    ['unknown', null],
+    ['translucent', '#FFFFFF'],
 ]) {
     test(`handles ${mode} root/body canvas propagation`, async ({
         page,
@@ -281,17 +255,11 @@ for (const [mode, color] of [
         await page.goto('/?canvas=' + mode);
         await toggle(page);
         await point(page, '#child');
-        if (color) {
-            await expect(page.locator(tooltipSelector)).toHaveAttribute(
-                'data-status',
-                'assessed',
-            );
-            await expect(page.locator(tooltipSelector)).toContainText(color);
-        } else {
-            await expect(page.locator(tooltipSelector)).toContainText(
-                'Unknown document canvas',
-            );
-        }
+        await expect(page.locator(tooltipSelector)).toHaveAttribute(
+            'data-status',
+            'assessed',
+        );
+        await expect(page.locator(tooltipSelector)).toContainText(color);
     });
 }
 
@@ -305,7 +273,7 @@ test('iframe boundaries clear unpinned results and preserve pinned snapshots', a
         await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toContainText(
-            'Frame content not supported',
+            'No inspectable text',
         );
         await expect(page.locator(tooltipSelector)).not.toContainText(
             '21.00:1',
@@ -389,6 +357,7 @@ test('updates shadow mutations and handles removal and popovers inside shadow ro
         .evaluate((element: HTMLElement) => {
             element.style.color = 'black';
         });
+    await point(page, '#shadow #shadow-text', 1);
     await expect(page.locator(tooltipSelector + ' .row').first()).toContainText(
         '#000000',
     );
@@ -409,6 +378,7 @@ test('updates shadow mutations and handles removal and popovers inside shadow ro
     await page
         .locator('#shadow #shadow-text')
         .evaluate((element) => element.remove());
+    await page.mouse.move(5, 5);
     await expect(page.locator(tooltipSelector)).toContainText(
         'Element no longer available',
     );
@@ -455,6 +425,7 @@ test('positions in viewport corners and follows pinned scrolling, resize and rem
         )
         .toBe(true);
     await page.locator('#bottom').evaluate((element) => element.remove());
+    await page.mouse.move(5, 5);
     await expect(page.locator(tooltipSelector)).toContainText(
         'Element no longer available',
     );
@@ -469,17 +440,8 @@ test('restricted pages fail gracefully', async ({ page, worker, toggle }) => {
     });
     await page.goto('chrome://version');
     await toggle(page);
-    await expect
-        .poll(() =>
-            worker.evaluate(async () => {
-                const [tab] = await chrome.tabs.query({
-                    active: true,
-                    currentWindow: true,
-                });
-                return chrome.action.getTitle({ tabId: tab.id });
-            }),
-        )
-        .toContain('unavailable');
+    // Give a rejected injection time to surface as an uncaught error.
+    await page.waitForTimeout(500);
     expect(errors).toEqual([]);
     await expect(page.locator(overlaySelector)).toHaveCount(0);
 });

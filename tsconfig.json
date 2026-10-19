@@ -9,7 +9,7 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "skipLibCheck": true,
-        "types": ["chrome", "node"]
+        "types": ["chrome", "node", "vite/client"]
     },
     "include": ["src", "tests", "*.ts"]
 }

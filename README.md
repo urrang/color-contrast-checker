@@ -18,10 +18,12 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 - Click the toolbar action to toggle inspection in the current tab.
 - The suggested shortcut is **Command+Shift+Y** on macOS and **Ctrl+Shift+Y** elsewhere. Check or change its assignment at `chrome://extensions/shortcuts`; Chrome may leave a conflicting shortcut unassigned.
 - Point at an element. Native hover styles and hover menus still work. The deepest reachable element stays selected; the inspector does not search parents or children for a label.
+- The tooltip header identifies the selected element as `tag#id.class1.class2`. Long headers are limited to three lines. Pinning keeps the displayed identity with the result snapshot.
+- Values refresh on pointer movement and scrolling, and again when transitions or animations running on the element or its ancestors finish. Changes made by page scripts while the pointer is still show up on the next movement.
 - Primary-click to pin the displayed result. Click again to resume. Both gestures consume pointer-down/up, mouse-down/up, and click events so normal page controls do not activate or gain focus. Scrolling and the context menu remain available.
 - Press **Escape** or toggle the action again to remove the inspector.
 
-A pinned result is a **snapshot of the displayed styles**, not a frozen browser pseudo-class or DOM. Its outline follows the element during scrolling/resizing. Removing the element shows “Element no longer available.”
+A pinned result is a **snapshot of the displayed styles**, not a frozen browser pseudo-class or DOM. Its outline follows the element during scrolling/resizing. Removing the element shows “Element no longer available” on the next pointer movement.
 
 ## What a result means
 
@@ -31,18 +33,17 @@ This is a computed-style calculation. It does not examine rendered pixels, verif
 
 **No inspectable text** means the selected element directly owns no rendered, non-whitespace DOM text. Empty containers, icons and containers with only child-owned text get this neutral state, without a ratio or AA/AAA outcomes. Point at a child text element to inspect it.
 
-**Indeterminate** means a detected condition prevents a supported calculation. The tooltip gives a reason and shows no pass/fail outcomes. Detection includes contributing background images/gradients, blends, opacity groups, filters, backdrop filters, masks/clipping, inset/text shadows, alternate text fill/stroke, generated content, styled first lines/letters, mixed descendant text, unsupported SVG/canvas rendering, ambiguous background coverage, unknown canvas colors, and unsupported/out-of-gamut colors. Detection is conservative and can decline cases that would require more paint analysis.
+**Indeterminate** means a detected condition prevents a supported calculation. The tooltip gives a reason and shows no pass/fail outcomes. Detection includes contributing background images/gradients, blend modes, opacity groups, filters, backdrop filters, unsupported SVG/canvas rendering, ambiguous background coverage, and unparseable colors. Detection is conservative and can decline cases that would require more paint analysis.
 
-Solid backgrounds are composed through ancestors, shadow hosts and assigned slots. Root/body canvas background propagation is handled once. A confirmed opaque layer shields irrelevant backgrounds behind it; ancestor group effects still invalidate the result. A fully transparent or translucent canvas with no established opaque base is indeterminate. The inspector never assumes a white browser canvas.
+Solid backgrounds are composed through ancestors, shadow hosts and assigned slots. The canvas uses the root background, or the body background when the root has none. The text color is the computed `-webkit-text-fill-color`, which equals `color` unless overridden. A confirmed opaque layer shields irrelevant backgrounds behind it; ancestor group effects still invalidate the result. When no layer is opaque, the result is composited over white, Chrome's default canvas. Pages that rely on a dark `color-scheme` without setting a background are still measured against white.
 
 ## Supported colors and limitations
 
-The bundled [Culori](https://culorijs.org/) parser/converter supports computed `rgb()` / `rgba()` (comma or space/slash), `color(srgb …)`, `lab()`, `lch()`, `oklab()`, `oklch()` and `color(display-p3 …)`, including alpha and fractional channels. Authored hex, named and HSL colors work through Chrome's computed RGB values. Colors must convert into the sRGB gamut. There is no gamut mapping; only conversion noise within `1e-7` of a channel boundary is normalized.
+The bundled [Culori](https://culorijs.org/) parser converts computed colors such as `rgb()`, `lab()`, `oklch()` and `color(display-p3 …)` to sRGB. Colors outside sRGB (for example vivid P3 colors) are clamped per channel, so their ratio is approximate.
 
 - Inspection covers the top-level document and **open** shadow roots. All iframe content, including same-origin frames, is excluded. Entering a frame clears an unpinned assessment; a pinned snapshot remains. Clicks and Escape inside a frame cannot be intercepted by the top-level inspector, so move back to the top-level page or use the toolbar to stop it.
-- Closed shadow roots, browser/internal pages, the Chrome Web Store, PDF viewers, browser-managed text/widgets, and pixel sampling are unsupported. Restricted-page injection failures update the action's title without an uncaught error.
-- There is no general paint-order or occlusion engine. Undetected overlapping siblings (including pointer-transparent overlays), images, unusual stacking/positioning, clipping, text decorations, selection paint, and other effects may invalidate a computed pair. A successful calculation does not prove these effects are absent. Chrome's privacy protection can also conceal the rendered color of visited links.
-- Newly attached shadow roots on existing hosts are discovered when hovered; already present roots and roots in added DOM subtrees are observed. An undiscovered root's programmatically opened top-layer UI may temporarily cover the overlay until that root is visited.
+- Closed shadow roots, browser/internal pages, the Chrome Web Store, PDF viewers, browser-managed text/widgets, and pixel sampling are unsupported.
+- There is no general paint-order or occlusion engine. Undetected overlapping siblings (including pointer-transparent overlays), images, pseudo-elements, unusual stacking/positioning, clipping and masks, box and text shadows, text stroke, styled first letters/lines, text decorations, selection paint, and other effects may invalidate a computed pair. A successful calculation does not prove these effects are absent. Chrome's privacy protection can also conceal the rendered color of visited links.
 - Window capture listeners registered by a page before activation may run before the inspector's capture listeners. Browser/UI gestures and interactions inside excluded frames are outside its event control.
 - Navigation ends inspection. Re-enable it in the new document. No CSS pseudo-class is forced; no target classes, attributes, layout, focus or styles are changed.
 

@@ -49,21 +49,27 @@ describe('locally parsed computed colors', () => {
         expect(formatColor(color)).toBe('#0D141F');
     });
 
-    it.each([
-        'color(display-p3 1 0 0)',
-        'color(srgb 1.1 0 0)',
-        'color(srgb 1.00000001 0 0)',
-        'oklch(0.7 0.4 30)',
-        'lab(60% 120 100)',
-        'color(rec2020 0.5 0.5 0.5)',
-        'color(xyz 0.2 0.3 0.4)',
-        'not-a-color',
-        'rgb(none 0 0)',
-        'rgb(1 2)',
-        'currentcolor',
-    ])('rejects unsupported, unresolved or out-of-gamut %s', (value) => {
-        expect(parseColor(value)).toBeNull();
-        expect(assess([solid], value).status).toBe('indeterminate');
+    it.each(['not-a-color', 'rgb(1 2)', 'currentcolor'])(
+        'rejects unparseable %s',
+        (value) => {
+            expect(parseColor(value)).toBeNull();
+            expect(assess([solid], value).status).toBe('indeterminate');
+        },
+    );
+
+    it('clamps out-of-gamut channels and treats none as 0', () => {
+        expect(parseColor('color(srgb 1.1 -0.1 0.5)')).toEqual({
+            r: 1,
+            g: 0,
+            b: 0.5,
+            a: 1,
+        });
+        expect(parseColor('color(display-p3 1 0 0)')).toMatchObject({
+            r: 1,
+            g: 0,
+            b: 0,
+        });
+        expect(parseColor('rgb(none 0 0)')).toEqual(black);
     });
 
     it('gives equivalent in-gamut pairs equivalent ratios', () => {
@@ -95,6 +101,14 @@ describe('solid background resolution', () => {
         });
     });
 
+    it('composites over a white canvas when no layer is opaque', () => {
+        expect(assess([])).toMatchObject({ status: 'assessed', ratio: 21 });
+        expect(assess([{ color: 'rgb(0 0 0 / 0.5)' }])).toMatchObject({
+            status: 'assessed',
+            background: { r: 0.5, g: 0.5, b: 0.5, a: 1 },
+        });
+    });
+
     it('composites translucent foreground over the resolved background', () => {
         expect(assess([solid], 'rgb(0 0 0 / 0.5)')).toMatchObject({
             status: 'assessed',
@@ -113,13 +127,10 @@ describe('solid background resolution', () => {
     });
 
     it.each([
-        [[{ color: 'rgb(255 255 255 / 0.5)' }], 'canvas'],
         [[{ ...solid, image: true }], 'image'],
-        [[{ ...solid, blend: true }], 'blend'],
         [[{ ...solid, effect: 'Filter' }], 'Filter'],
         [[{ ...solid, effect: 'Opacity' }], 'Opacity'],
         [[{ color: 'unknown' }], 'color'],
-        [[{ color: 'color(display-p3 1 0 0)' }], 'color'],
     ] satisfies [BackgroundLayer[], string][])(
         'rejects unresolved layers: %j',
         (layers, reason) => {
@@ -152,8 +163,8 @@ describe('solid background resolution', () => {
 
     it('never attaches numeric outcomes to unassessed states', () => {
         const results: Result[] = [
-            assess([]),
             assess([solid], 'unknown'),
+            assess([{ ...solid, image: true }]),
             { status: 'no-text' },
         ];
         for (const result of results) {

@@ -1,0 +1,106 @@
+:host::backdrop {
+    background: transparent !important;
+    pointer-events: none !important;
+}
+
+* {
+    box-sizing: border-box;
+    pointer-events: none !important;
+}
+
+.outline {
+    position: fixed;
+    border: 2px solid #2f7cf6;
+    box-shadow: 0 0 0 1px #fff;
+    border-radius: 2px;
+}
+
+.tooltip {
+    position: fixed;
+    width: 268px;
+    max-width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+    overflow: hidden;
+    padding: 12px 14px;
+    border: 1px solid #42444d;
+    border-radius: 9px;
+    background: #202127;
+    color: #f7f7fa;
+    box-shadow: 0 5px 22px #0005;
+    font:
+        12px/1.5 system-ui,
+        sans-serif;
+    letter-spacing: normal;
+    text-align: left;
+    text-transform: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.element-header {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #42444d;
+    color: #e6e6e9;
+    font-family: ui-monospace, monospace;
+    font-weight: 600;
+}
+
+.element-label {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+}
+
+.element-tag {
+    color: #79b8ff;
+}
+
+.element-punctuation {
+    color: #868891;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.label {
+    color: #c1c3cd;
+}
+
+.value {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+}
+
+.swatch {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border: 1px solid #ffffff80;
+    border-radius: 2px;
+}
+
+.status {
+    margin-top: 7px;
+    color: #c1c3cd;
+    font-size: 11px;
+}
+
+.pass {
+    color: #a5ecc4;
+}
+
+.fail {
+    color: #ffb2b2;
+}
+
+[hidden] {
+    display: none !important;
+}
