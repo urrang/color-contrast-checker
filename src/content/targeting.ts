@@ -8,11 +8,7 @@ export function composedParent(element: Element): Element | null {
 
 export function ancestry(element: Element): Element[] {
     const elements: Element[] = [];
-    for (
-        let current: Element | null = element;
-        current;
-        current = composedParent(current)
-    ) {
+    for (let current: Element | null = element; current; current = composedParent(current)) {
         elements.push(current);
     }
     return elements;
@@ -56,13 +52,9 @@ export function scrollerAt(x: number, y: number, dx: number, dy: number) {
     for (
         let element = targetAt(x, y);
         element;
-        element =
-            composedParent(element) ??
-            element.ownerDocument.defaultView?.frameElement ??
-            null
+        element = composedParent(element) ?? element.ownerDocument.defaultView?.frameElement ?? null
     ) {
-        const style =
-            element.ownerDocument.defaultView!.getComputedStyle(element);
+        const style = element.ownerDocument.defaultView!.getComputedStyle(element);
         const root = element === element.ownerDocument.scrollingElement;
         const scrollsX = root
             ? !['hidden', 'clip'].includes(style.overflowX)
@@ -72,14 +64,10 @@ export function scrollerAt(x: number, y: number, dx: number, dy: number) {
             : ['auto', 'scroll'].includes(style.overflowY);
         if (
             (scrollsX &&
-                ((dx > 0 &&
-                    element.scrollLeft + element.clientWidth <
-                        element.scrollWidth) ||
+                ((dx > 0 && element.scrollLeft + element.clientWidth < element.scrollWidth) ||
                     (dx < 0 && element.scrollLeft > 0))) ||
             (scrollsY &&
-                ((dy > 0 &&
-                    element.scrollTop + element.clientHeight <
-                        element.scrollHeight) ||
+                ((dy > 0 && element.scrollTop + element.clientHeight < element.scrollHeight) ||
                     (dy < 0 && element.scrollTop > 0)))
         )
             return element;
@@ -107,8 +95,7 @@ function frameViewport(frame: HTMLIFrameElement) {
     const rect = frame.getBoundingClientRect();
     if (!rect.width || !rect.height) return null;
     const style = getComputedStyle(frame);
-    const left =
-        parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
+    const left = parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft);
     const top = parseFloat(style.borderTopWidth) + parseFloat(style.paddingTop);
     const scaleX = rect.width / frame.offsetWidth;
     const scaleY = rect.height / frame.offsetHeight;
@@ -122,18 +109,12 @@ function frameViewport(frame: HTMLIFrameElement) {
 
 export function toTopRect(owner: Document, rect: DOMRect): DOMRect | null {
     while (owner !== document) {
-        const frame = owner.defaultView
-            ?.frameElement as HTMLIFrameElement | null;
+        const frame = owner.defaultView?.frameElement as HTMLIFrameElement | null;
         if (!frame?.isConnected || frame.contentDocument !== owner) return null;
         const viewport = frameViewport(frame);
         if (!viewport) return null;
         const { left, top, scaleX, scaleY } = viewport;
-        rect = new DOMRect(
-            left + rect.x * scaleX,
-            top + rect.y * scaleY,
-            rect.width * scaleX,
-            rect.height * scaleY,
-        );
+        rect = new DOMRect(left + rect.x * scaleX, top + rect.y * scaleY, rect.width * scaleX, rect.height * scaleY);
         owner = frame.ownerDocument;
     }
     return rect;

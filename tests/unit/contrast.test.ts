@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    contrast,
-    isLargeText,
-    luminance,
-    thresholds,
-} from '../../src/core/contrast';
+import { contrast, isLargeText, luminance, thresholds } from '../../src/core/contrast';
 
 const black = { r: 0, g: 0, b: 0, a: 1 };
 const white = { r: 1, g: 1, b: 1, a: 1 };
@@ -18,9 +13,7 @@ describe('WCAG text contrast', () => {
         expect(contrast(black, white)).toBe(21);
         expect(contrast(white, black)).toBe(21);
         expect(contrast(white, white)).toBe(1);
-        expect(
-            contrast({ ...black, r: 0.04, g: 0.04, b: 0.04 }, black),
-        ).toBeCloseTo(1.0619195);
+        expect(contrast({ ...black, r: 0.04, g: 0.04, b: 0.04 }, black)).toBeCloseTo(1.0619195);
     });
 
     it('compares unrounded ratios at every threshold', () => {
@@ -39,9 +32,7 @@ describe('WCAG text contrast', () => {
         expect(isLargeText({ size: 24, weight: 400 })).toBe(true);
         expect(isLargeText({ size: 23.999999, weight: 400 })).toBe(false);
         expect(isLargeText({ size: 56 / 3, weight: 700 })).toBe(true);
-        expect(isLargeText({ size: 56 / 3 - 0.000001, weight: 700 })).toBe(
-            false,
-        );
+        expect(isLargeText({ size: 56 / 3 - 0.000001, weight: 700 })).toBe(false);
         expect(isLargeText({ size: 56 / 3, weight: 699 })).toBe(false);
     });
 });

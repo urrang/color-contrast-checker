@@ -1,10 +1,4 @@
-import {
-    test as base,
-    expect,
-    type BrowserContext,
-    type Page,
-    type Worker,
-} from '@playwright/test';
+import { test as base, expect, type BrowserContext, type Page, type Worker } from '@playwright/test';
 import { resolve } from 'node:path';
 
 // Playwright applies the config's context options (viewport, baseURL) to this persistent context too.
@@ -28,31 +22,19 @@ export const test = base.extend<{
         await context.close();
     },
     worker: async ({ context }, use) => {
-        const worker =
-            context.serviceWorkers()[0] ??
-            (await context.waitForEvent('serviceworker'));
-        await expect
-            .poll(() =>
-                worker.evaluate(() => chrome.action.onClicked.hasListeners()),
-            )
-            .toBe(true);
+        const worker = context.serviceWorkers()[0] ?? (await context.waitForEvent('serviceworker'));
+        await expect.poll(() => worker.evaluate(() => chrome.action.onClicked.hasListeners())).toBe(true);
         await use(worker);
     },
     toggle: async ({ context, worker }, use) => {
         const id = new URL(worker.url()).host;
         const browserSession = await context.browser()!.newBrowserCDPSession();
         await use(async (page) => {
-            const { targetInfos } = await browserSession.send(
-                'Target.getTargets',
-                {
-                    filter: [{ type: 'tab', exclude: false }],
-                },
-            );
+            const { targetInfos } = await browserSession.send('Target.getTargets', {
+                filter: [{ type: 'tab', exclude: false }],
+            });
             const tab = targetInfos.find((target) => target.url === page.url());
-            if (!tab)
-                throw new Error(
-                    'No tab target: ' + JSON.stringify(targetInfos),
-                );
+            if (!tab) throw new Error('No tab target: ' + JSON.stringify(targetInfos));
             // Invoke the real action so Chrome grants activeTab; no extra host permissions in the test build.
             await browserSession.send('Extensions.triggerAction', {
                 id,
@@ -74,16 +56,10 @@ export async function point(page: Page, selector: string, offset = 0) {
     await locator.scrollIntoViewIfNeeded();
     const rect = await locator.boundingBox();
     if (!rect) throw new Error('Missing fixture: ' + selector);
-    await page.mouse.move(
-        rect.x + Math.min(rect.width / 2, 70) + offset,
-        rect.y + rect.height / 2,
-    );
+    await page.mouse.move(rect.x + Math.min(rect.width / 2, 70) + offset, rect.y + rect.height / 2);
 }
 
 // Event counts recorded by the fixture page's #pointer-action button.
 export function actionCounts(page: Page) {
-    return page.evaluate(
-        () =>
-            (window as unknown as { actions: Record<string, number> }).actions,
-    );
+    return page.evaluate(() => (window as unknown as { actions: Record<string, number> }).actions);
 }

@@ -32,20 +32,14 @@ export function createOverlay() {
     document.documentElement.append(host);
     host.showPopover();
 
-    function row(
-        label: string,
-        value: string,
-        color?: string,
-        state?: boolean,
-    ) {
+    function row(label: string, value: string, color?: string, state?: boolean) {
         const line = document.createElement('div');
         line.className = 'row';
         const name = document.createElement('span');
         name.className = 'label';
         name.textContent = label;
         const output = document.createElement('span');
-        output.className =
-            'value' + (state === undefined ? '' : state ? ' pass' : ' fail');
+        output.className = 'value' + (state === undefined ? '' : state ? ' pass' : ' fail');
         if (color) {
             const swatch = document.createElement('span');
             swatch.className = 'swatch';
@@ -70,10 +64,7 @@ export function createOverlay() {
             tag.className = 'element-tag';
             tag.textContent = target.localName;
             label.append(tag);
-            for (const [prefix, name] of [
-                ['#', target.id],
-                ...Array.from(target.classList, (name) => ['.', name]),
-            ]) {
+            for (const [prefix, name] of [['#', target.id], ...Array.from(target.classList, (name) => ['.', name])]) {
                 if (!name) continue;
                 const punctuation = document.createElement('span');
                 punctuation.className = 'element-punctuation';
@@ -84,8 +75,7 @@ export function createOverlay() {
             tooltip.append(header);
         }
         if (!result) row('Status', 'Point at text to inspect');
-        else if (result.status === 'no-text')
-            row('Status', 'No inspectable text');
+        else if (result.status === 'no-text') row('Status', 'No inspectable text');
         else if (result.status === 'indeterminate') {
             row('Status', 'Indeterminate');
             row('Contrast', 'Unable to determine');
@@ -101,18 +91,8 @@ export function createOverlay() {
             row('Background', background, background);
             row('Contrast', result.ratio.toFixed(2) + ':1');
             const size = result.large ? 'large' : 'normal';
-            row(
-                'AA ' + size,
-                result.aa ? '✓ Pass' : '✕ Fail',
-                undefined,
-                result.aa,
-            );
-            row(
-                'AAA ' + size,
-                result.aaa ? '✓ Pass' : '✕ Fail',
-                undefined,
-                result.aaa,
-            );
+            row('AA ' + size, result.aa ? '✓ Pass' : '✕ Fail', undefined, result.aa);
+            row('AAA ' + size, result.aaa ? '✓ Pass' : '✕ Fail', undefined, result.aaa);
         }
         const hint = document.createElement('div');
         hint.className = 'status';
@@ -121,9 +101,7 @@ export function createOverlay() {
     }
 
     function position(target: Element | null, x: number, y: number) {
-        const rect = target?.isConnected
-            ? toTopRect(target.ownerDocument, target.getBoundingClientRect())
-            : null;
+        const rect = target?.isConnected ? toTopRect(target.ownerDocument, target.getBoundingClientRect()) : null;
         outline.hidden = !rect;
         if (rect) {
             Object.assign(outline.style, {
@@ -141,11 +119,9 @@ export function createOverlay() {
         if (left + width > viewWidth - 8) left = x - width - 18;
         if (top + height > viewHeight - 8) top = y - height - 18;
         // On a narrow viewport there may be no horizontal room; use the space above/below.
-        if (left < 8)
-            left = Math.max(8, Math.min(x - width / 2, viewWidth - width - 8));
+        if (left < 8) left = Math.max(8, Math.min(x - width / 2, viewWidth - width - 8));
         tooltip.style.left = Math.max(8, left) + 'px';
-        tooltip.style.top =
-            Math.max(8, Math.min(top, viewHeight - height - 8)) + 'px';
+        tooltip.style.top = Math.max(8, Math.min(top, viewHeight - height - 8)) + 'px';
     }
 
     function raise() {

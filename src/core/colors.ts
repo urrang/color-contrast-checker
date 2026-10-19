@@ -16,8 +16,7 @@ export function parseColor(value: string): Color | null {
 export function composite(front: Color, back: Color): Color {
     const a = front.a + back.a * (1 - front.a);
     if (a === 0) return { r: 0, g: 0, b: 0, a: 0 };
-    const channel = (key: 'r' | 'g' | 'b') =>
-        (front[key] * front.a + back[key] * back.a * (1 - front.a)) / a;
+    const channel = (key: 'r' | 'g' | 'b') => (front[key] * front.a + back[key] * back.a * (1 - front.a)) / a;
     return { r: channel('r'), g: channel('g'), b: channel('b'), a };
 }
 
@@ -36,11 +35,7 @@ export function formatColor(color: Color): string {
 }
 
 // Layers run from the text outward. Effects are checked even behind an opaque background.
-export function assessColors(
-    foreground: string,
-    layers: BackgroundLayer[],
-    font: Font,
-): Result {
+export function assessColors(foreground: string, layers: BackgroundLayer[], font: Font): Result {
     const unknown = (reason: string): Result => ({
         status: 'indeterminate',
         reason,
@@ -60,8 +55,7 @@ export function assessColors(
     }
     // Chrome paints a white canvas when the page sets no opaque background.
     let background: Color = { r: 1, g: 1, b: 1, a: 1 };
-    for (const layer of backgrounds.reverse())
-        background = composite(layer, background);
+    for (const layer of backgrounds.reverse()) background = composite(layer, background);
     const effectiveText = composite(text, background);
     const ratio = contrast(effectiveText, background);
     return {

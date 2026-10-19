@@ -33,12 +33,8 @@ function start() {
         const hovered = next?.matches(':hover') ?? false;
         // A new target or Shift changing its hover state can start transitions on its ancestry.
         if (next && (next !== target || hovered !== targetHovered)) {
-            const running = ancestry(textParent(next)).flatMap((element) =>
-                element.getAnimations(),
-            );
-            Promise.allSettled(
-                running.map((animation) => animation.finished),
-            ).then(schedule);
+            const running = ancestry(textParent(next)).flatMap((element) => element.getAnimations());
+            Promise.allSettled(running.map((animation) => animation.finished)).then(schedule);
         }
         target = next;
         targetHovered = hovered;
@@ -61,12 +57,8 @@ function start() {
 
     function move(event: PointerEvent) {
         // Layout-triggered pointerout events can report shiftKey=false while Shift is held.
-        if (event.type === 'pointermove')
-            overlay.letHoverThrough(event.shiftKey);
-        pointer = toTopRect(
-            (event.currentTarget as Window).document,
-            new DOMRect(event.clientX, event.clientY, 0, 0),
-        );
+        if (event.type === 'pointermove') overlay.letHoverThrough(event.shiftKey);
+        pointer = toTopRect((event.currentTarget as Window).document, new DOMRect(event.clientX, event.clientY, 0, 0));
         schedule();
     }
 
@@ -115,11 +107,7 @@ function start() {
             },
             { capture: true, signal },
         );
-        view.addEventListener(
-            'keyup',
-            (event) => overlay.letHoverThrough(event.shiftKey),
-            { capture: true, signal },
-        );
+        view.addEventListener('keyup', (event) => overlay.letHoverThrough(event.shiftKey), { capture: true, signal });
         view.addEventListener('scroll', schedule, {
             capture: true,
             passive: true,
@@ -134,12 +122,7 @@ function start() {
         'wheel',
         (event) => {
             if (event.target !== overlay.host || event.ctrlKey) return;
-            const scroller = scrollerAt(
-                event.clientX,
-                event.clientY,
-                event.deltaX,
-                event.deltaY,
-            );
+            const scroller = scrollerAt(event.clientX, event.clientY, event.deltaX, event.deltaY);
             if (!scroller || scroller === document.scrollingElement) return;
             event.preventDefault();
             scroller.scrollBy({

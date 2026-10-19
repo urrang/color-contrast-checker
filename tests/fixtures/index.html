@@ -205,9 +205,7 @@
             <span id="alpha" class="sample">Alpha layers</span>
         </div>
         <open-sample id="shadow"></open-sample>
-        <slot-sample
-            ><span id="slotted" slot="label">Slotted text</span></slot-sample
-        >
+        <slot-sample><span id="slotted" slot="label">Slotted text</span></slot-sample>
         <button-sample id="slotted-text">Slotted button</button-sample>
         <button id="transition" class="sample">Transition text</button>
         <div id="gradient" class="sample">Gradient text</div>
@@ -220,9 +218,7 @@
         <div id="descendant" class="sample">
             <span id="child">Child-owned text</span>
         </div>
-        <div id="mixed" class="sample">
-            Own text <span>different text</span>
-        </div>
+        <div id="mixed" class="sample">Own text <span>different text</span></div>
         <div id="pseudo" class="sample">Painted pseudo</div>
         <svg id="svg" width="200" height="40">
             <text x="0" y="25">SVG text</text>
@@ -246,15 +242,10 @@
         <div id="srgb" class="sample">sRGB text</div>
         <div id="rec2020" class="sample">Rec. 2020 text</div>
         <div id="contents">
-            <span id="contents-child" class="sample"
-                >Display contents parent</span
-            >
+            <span id="contents-child" class="sample">Display contents parent</span>
         </div>
         <iframe id="same-frame" src="/frame.html"></iframe>
-        <iframe
-            id="cross-frame"
-            src="http://localhost:4173/frame.html"
-        ></iframe>
+        <iframe id="cross-frame" src="http://localhost:4173/frame.html"></iframe>
         <div id="blend" class="sample">Blended text</div>
         <div id="background-blend" class="sample">Background blend</div>
         <div id="backdrop-filter" class="sample">Backdrop filter</div>
@@ -315,11 +306,9 @@
             contextmenu: 0,
         };
         for (const type of Object.keys(window.actions)) {
-            document
-                .querySelector('#pointer-action')
-                .addEventListener(type, () => {
-                    window.actions[type]++;
-                });
+            document.querySelector('#pointer-action').addEventListener(type, () => {
+                window.actions[type]++;
+            });
         }
         const mode = new URLSearchParams(location.search).get('canvas');
         if (mode === 'dark') {

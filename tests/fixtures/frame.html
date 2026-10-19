@@ -21,20 +21,10 @@
     <open-sample></open-sample>
     <script>
         window.actions = 0;
-        for (const type of [
-            'pointerdown',
-            'mousedown',
-            'pointerup',
-            'mouseup',
-            'click',
-        ]) {
-            document
-                .querySelector('button')
-                .addEventListener(type, () => window.actions++);
+        for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+            document.querySelector('button').addEventListener(type, () => window.actions++);
         }
-        document
-            .querySelector('open-sample')
-            .attachShadow({ mode: 'open' }).innerHTML =
+        document.querySelector('open-sample').attachShadow({ mode: 'open' }).innerHTML =
             '<span id="frame-shadow">Shadow frame text</span><svg width="100" height="30"><text y="20">SVG text</text></svg>';
     </script>
 </html>

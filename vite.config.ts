@@ -6,14 +6,10 @@ export default defineConfig(({ mode }) => ({
         target: 'chrome120',
         emptyOutDir: mode !== 'content',
         lib: {
-            entry:
-                mode === 'content'
-                    ? 'src/content/inspector.ts'
-                    : 'src/background.ts',
+            entry: mode === 'content' ? 'src/content/inspector.ts' : 'src/background.ts',
             name: 'ContrastInspector',
             formats: mode === 'content' ? ['iife'] : ['es'],
-            fileName: () =>
-                mode === 'content' ? 'inspector.js' : 'background.js',
+            fileName: () => (mode === 'content' ? 'inspector.js' : 'background.js'),
         },
     },
 }));

@@ -1,10 +1,7 @@
 import type { Color, Font } from './types';
 
 export function luminance({ r, g, b }: Color): number {
-    const linear = (channel: number) =>
-        channel <= 0.04045
-            ? channel / 12.92
-            : ((channel + 0.055) / 1.055) ** 2.4;
+    const linear = (channel: number) => (channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
     return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
 }
 
