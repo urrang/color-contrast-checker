@@ -55,10 +55,6 @@ npm run check
 
 Individual commands: `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:browser`. Set `HEADED=1` for a visible test browser. The fixture server binds to loopback port 4173.
 
-Unit tests cover WCAG boundaries, large/bold sizes, every required color syntax, fractional values, alpha composition, gamut rejection and unassessed states. Browser tests load the **built unpacked extension** in Playwright's bundled Chromium persistent context and invoke its real action using Chromium's test automation protocol. They do not add extension permissions or use a second inspector implementation. CDP is used only by the test harness.
+Browser tests load the built `dist/` extension in Playwright's bundled Chromium and trigger its real toolbar action over CDP, so rebuild before running `npx playwright test` directly. On a failure, Playwright retains a trace under `test-results`.
 
-Fixtures cover activation/cleanup, hover menus/transitions, shadow roots/slots, pin/unpin events and focus, no-text/mixed/generated text, modern colors, dark/translucent/unknown canvases, opaque shielding and unsupported effects, iframe boundaries, dialogs/popovers, scrolling, resize and removal. On a failure, Playwright retains a trace under `test-results`.
-
-For a manual Chrome smoke check, load `dist`, open `tests/fixtures/index.html` through `node tests/fixtures/server.mjs` at `http://127.0.0.1:4173`, and check the toolbar action, assigned shortcut, pin/unpin and Escape. Then toggle on `chrome://version` to confirm graceful restriction handling. Automated action tests do not replace this check of Chrome's actual toolbar and shortcut UI.
-
-Implementation verification: lint, strict typecheck, unit tests and browser tests passed using bundled Chromium 156. Native Chrome toolbar/shortcut smoke testing remains unverified because macOS computer-use permissions were unavailable in the implementation environment.
+For a manual Chrome smoke check, load `dist`, run `node tests/fixtures/server.mjs`, open `http://127.0.0.1:4173`, and check the toolbar action, assigned shortcut, pin/unpin and Escape. Then toggle on `chrome://version` to confirm graceful restriction handling. The automated tests do not exercise Chrome's real toolbar button or shortcut UI.

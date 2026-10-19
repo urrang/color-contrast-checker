@@ -163,20 +163,20 @@ Use the smallest required permissions:
 
 ```json
 {
-  "manifest_version": 3,
-  "name": "Contrast Inspector",
-  "version": "0.1.0",
-  "permissions": ["activeTab", "scripting"],
-  "background": { "service_worker": "background.js" },
-  "action": { "default_title": "Toggle Contrast Inspector" },
-  "commands": {
-    "_execute_action": {
-      "suggested_key": {
-        "default": "Ctrl+Shift+Y",
-        "mac": "Command+Shift+Y"
-      }
+    "manifest_version": 3,
+    "name": "Contrast Inspector",
+    "version": "0.1.0",
+    "permissions": ["activeTab", "scripting"],
+    "background": { "service_worker": "background.js" },
+    "action": { "default_title": "Toggle Contrast Inspector" },
+    "commands": {
+        "_execute_action": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+Y",
+                "mac": "Command+Shift+Y"
+            }
+        }
     }
-  }
 }
 ```
 

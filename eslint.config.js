@@ -1,8 +1,9 @@
 import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'test-results/**', 'playwright-report/**'] },
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+export default defineConfig(
+    globalIgnores(['dist/', 'test-results/', 'playwright-report/']),
+    js.configs.recommended,
+    tseslint.configs.recommended,
 );
