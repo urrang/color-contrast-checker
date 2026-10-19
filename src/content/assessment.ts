@@ -2,13 +2,25 @@ import { assessColors, parseColor } from '../core/colors';
 import type { BackgroundLayer, Result } from '../core/types';
 import { ancestry } from './targeting';
 
-function ownTextRects(element: Element): DOMRect[] {
-    const style = getComputedStyle(element);
+// Slotted text inherits styles and backgrounds from its slot, not from the host that owns it.
+export function textParent(element: Element): Element {
+    for (const node of element.childNodes) {
+        if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim())
+            continue;
+
+        const slot = (node as Text).assignedSlot;
+        if (slot) return slot;
+    }
+
+    return element;
+}
+
+function ownTextRects(element: Element, style: CSSStyleDeclaration): DOMRect[] {
     if (style.display === 'none' || style.visibility !== 'visible') return [];
     return Array.from(element.childNodes).flatMap((node) => {
         if (node.nodeType !== Node.TEXT_NODE || !node.textContent?.trim())
             return [];
-        const range = document.createRange();
+        const range = element.ownerDocument.createRange();
         range.selectNodeContents(node);
         return Array.from(range.getClientRects()).filter(
             (rect) => rect.width > 0 && rect.height > 0,
@@ -49,9 +61,12 @@ function coversText(box: DOMRect, textRects: DOMRect[]): boolean {
 }
 
 function svgOrCanvasText(element: Element): boolean {
+    const view = element.ownerDocument.defaultView;
     return (
-        element instanceof HTMLCanvasElement ||
-        (element instanceof SVGElement && Boolean(element.textContent?.trim()))
+        view !== null &&
+        (element instanceof view.HTMLCanvasElement ||
+            (element instanceof view.SVGElement &&
+                Boolean(element.textContent?.trim())))
     );
 }
 
@@ -62,20 +77,22 @@ export function assessElement(target: Element): Result {
     });
     if (svgOrCanvasText(target))
         return unknown('SVG or canvas text is not supported');
-    const textRects = ownTextRects(target);
+    const parent = textParent(target);
+    const style = getComputedStyle(parent);
+    const textRects = ownTextRects(target, style);
     if (!textRects.length) return { status: 'no-text' };
 
-    const style = getComputedStyle(target);
     const font = {
         size: parseFloat(style.fontSize),
         weight: Number(style.fontWeight),
     };
 
-    const elements = ancestry(target);
+    const elements = ancestry(parent);
     const styles = elements.map((element) => getComputedStyle(element));
-    const root = document.documentElement;
+    const owner = target.ownerDocument;
+    const root = owner.documentElement;
     const rootStyle = getComputedStyle(root);
-    const body = document.body;
+    const body = owner.body;
     // The canvas takes the root background, or the body's when the root has none.
     const bodyPropagates =
         body !== null &&
@@ -120,6 +137,19 @@ export function assessElement(target: Element): Result {
     layers.push(
         layerFromStyle(bodyPropagates ? getComputedStyle(body) : rootStyle),
     );
+    if (owner !== document) {
+        // A transparent frame can show the embedding page, rather than a white canvas.
+        if (!layers.some((layer) => parseColor(layer.color)?.a === 1))
+            return unknown('Transparent iframe background is not supported');
+        let frame = owner.defaultView?.frameElement;
+        while (frame) {
+            for (const ancestor of ancestry(frame)) {
+                const effect = groupEffect(getComputedStyle(ancestor));
+                if (effect) return unknown(effect);
+            }
+            frame = frame.ownerDocument.defaultView?.frameElement;
+        }
+    }
     // Equals the computed color unless -webkit-text-fill-color overrides it.
     const foreground = style.getPropertyValue('-webkit-text-fill-color');
     return assessColors(foreground, layers, font);

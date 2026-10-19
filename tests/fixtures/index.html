@@ -221,6 +221,7 @@
         <slot-sample
             ><span id="slotted" slot="label">Slotted text</span></slot-sample
         >
+        <button-sample id="slotted-text">Slotted button</button-sample>
         <button id="transition" class="sample">Transition text</button>
         <div id="gradient" class="sample">Gradient text</div>
         <a href="#activated" id="navigate" class="sample">Navigation link</a>
@@ -309,6 +310,16 @@
                     super();
                     this.attachShadow({ mode: 'open' }).innerHTML =
                         '<style>:host{display:block}div{background:#bce8dc;color:#333;padding:12px}slot{display:contents}</style><div><slot name="label"></slot></div>';
+                }
+            },
+        );
+        customElements.define(
+            'button-sample',
+            class extends HTMLElement {
+                constructor() {
+                    super();
+                    this.attachShadow({ mode: 'open' }).innerHTML =
+                        '<style>button{background:#bce8dc;color:#333;padding:12px;border:0}</style><button><slot></slot></button>';
                 }
             },
         );

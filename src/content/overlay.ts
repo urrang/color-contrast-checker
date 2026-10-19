@@ -1,5 +1,6 @@
 import { formatColor } from '../core/colors';
 import type { Result } from '../core/types';
+import { toTopRect } from './targeting';
 import styles from './overlay.css?inline';
 
 export type ElementLabel = {
@@ -136,9 +137,11 @@ export function createOverlay() {
     }
 
     function position(target: Element | null, x: number, y: number) {
-        outline.hidden = !target?.isConnected;
-        if (target?.isConnected) {
-            const rect = target.getBoundingClientRect();
+        const rect = target?.isConnected
+            ? toTopRect(target.ownerDocument, target.getBoundingClientRect())
+            : null;
+        outline.hidden = !rect;
+        if (rect) {
             Object.assign(outline.style, {
                 left: rect.left + 'px',
                 top: rect.top + 'px',
@@ -167,5 +170,14 @@ export function createOverlay() {
         host.showPopover();
     }
 
-    return { render, position, raise, remove: () => host.remove() };
+    return {
+        render,
+        position,
+        raise,
+        hide: () => {
+            tooltip.hidden = true;
+            outline.hidden = true;
+        },
+        remove: () => host.remove(),
+    };
 }

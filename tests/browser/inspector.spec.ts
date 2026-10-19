@@ -75,6 +75,7 @@ test('targets open shadow text, slotted text and display:contents ancestry', asy
     for (const selector of [
         '#shadow #shadow-text',
         '#slotted',
+        '#slotted-text',
         '#nested',
         '#contents-child',
     ]) {
@@ -264,34 +265,241 @@ for (const [mode, color] of [
     });
 }
 
-test('iframe boundaries clear unpinned results and preserve pinned snapshots', async ({
+test('cross-origin iframe boundaries clear unpinned results and preserve pinned snapshots', async ({
     page,
     toggle,
 }) => {
     await toggle(page);
-    for (const selector of ['#same-frame', '#cross-frame']) {
-        await point(page, '#plain');
-        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-        await point(page, selector);
-        await expect(page.locator(tooltipSelector)).toContainText(
-            'No inspectable text',
-        );
-        await expect(page.locator(tooltipSelector)).not.toContainText(
-            '21.00:1',
-        );
-        expect(
-            await page.frameLocator(selector).locator(overlaySelector).count(),
-        ).toBe(0);
-    }
+    await point(page, '#plain');
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    await point(page, '#cross-frame');
+    await expect(page.locator(tooltipSelector)).toContainText(
+        'No inspectable text',
+    );
+    await expect(page.locator(tooltipSelector)).not.toContainText('21.00:1');
+    await expect(
+        page.frameLocator('#cross-frame').locator(overlaySelector),
+    ).toHaveCount(0);
     await point(page, '#plain');
     await page.mouse.down();
     await page.mouse.up();
-    await point(page, '#same-frame');
+    await point(page, '#cross-frame');
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
     await expect(page.locator(overlaySelector)).toHaveAttribute(
         'data-pinned',
         'true',
     );
+});
+
+test('inspects same-origin frame text, shadow roots and native hover with one top-level overlay', async ({
+    page,
+    toggle,
+}) => {
+    await toggle(page);
+    const preview = page.frameLocator('#same-frame');
+    for (const selector of ['#frame-text', '#frame-shadow', '#frame-action']) {
+        await preview.locator(selector).hover();
+        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+        await expect(
+            page.locator(tooltipSelector + ' .element-label'),
+        ).toContainText(selector);
+    }
+    await preview.locator('svg text').hover();
+    await expect(page.locator(tooltipSelector)).toContainText(
+        'SVG or canvas text',
+    );
+    await expect(preview.locator(overlaySelector)).toHaveCount(0);
+    await preview.locator('#frame-text').evaluate((element: HTMLElement) => {
+        element.ownerDocument.documentElement.style.background = '#111';
+        element.style.color = 'white';
+    });
+    await preview.locator('#frame-text').hover();
+    await expect(page.locator(tooltipSelector)).toContainText('#111111');
+    await preview.locator('#frame-text').evaluate((element: HTMLElement) => {
+        element.ownerDocument.documentElement.style.background = 'white';
+        element.style.color = 'black';
+    });
+    await preview.locator('#frame-text').hover();
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    await page.mouse.down();
+    await page.mouse.up();
+    await point(page, '#fail');
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    await preview.locator('#frame-action').click();
+    await expect(page.locator(overlaySelector)).toHaveAttribute(
+        'data-pinned',
+        'false',
+    );
+    await preview.locator('#frame-action').click();
+    await expect(page.locator(overlaySelector)).toHaveAttribute(
+        'data-pinned',
+        'true',
+    );
+    expect(
+        await preview
+            .locator('body')
+            .evaluate(() => (window as unknown as { actions: number }).actions),
+    ).toBe(0);
+    await preview.locator('#frame-action').focus();
+    await page.keyboard.press('Escape');
+    await expect(page.locator(overlaySelector)).toHaveCount(0);
+    await preview.locator('#frame-action').click();
+    expect(
+        await preview
+            .locator('body')
+            .evaluate(() => (window as unknown as { actions: number }).actions),
+    ).toBe(5);
+});
+
+test('aligns nested frame targets with borders, padding, zoom and scrolling', async ({
+    page,
+    toggle,
+}) => {
+    await page.locator('#same-frame').evaluate((element: HTMLIFrameElement) => {
+        element.style.cssText =
+            'height: 250px; width: 400px; border: 6px solid; padding: 5px; transform: scale(0.75); transform-origin: top left';
+        const nested = element.contentDocument!.createElement('iframe');
+        nested.src = '/frame.html';
+        nested.style.cssText = 'height: 130px; width: 250px; border: 4px solid';
+        element.contentDocument!.body.append(nested);
+    });
+    const target = page
+        .frameLocator('#same-frame')
+        .frameLocator('iframe')
+        .locator('#frame-text');
+    await expect(target).toBeVisible();
+    await toggle(page);
+    await target.hover();
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    await page.mouse.down();
+    await page.mouse.up();
+    await page
+        .locator('#same-frame')
+        .evaluate((element: HTMLIFrameElement) =>
+            element.contentWindow!.scrollBy(0, 12),
+        );
+    const box = await target.boundingBox();
+    await expect
+        .poll(() => page.locator(overlaySelector + ' .outline').boundingBox())
+        .toEqual(box);
+    await page.mouse.wheel(0, 40);
+    await expect
+        .poll(async () => {
+            const targetBox = await target.boundingBox();
+            const outlineBox = await page
+                .locator(overlaySelector + ' .outline')
+                .boundingBox();
+            return Math.abs(targetBox!.y - outlineBox!.y);
+        })
+        .toBeLessThan(1);
+    await toggle(page);
+    await page.locator('#same-frame').evaluate((element: HTMLIFrameElement) => {
+        element.style.transform = 'rotate(10deg)';
+    });
+    await toggle(page);
+    await target.hover();
+    await expect(page.locator(tooltipSelector)).toBeHidden();
+});
+
+test('aligns targets in frames with fractional sizes', async ({
+    page,
+    toggle,
+}) => {
+    await page.locator('#same-frame').evaluate((element: HTMLIFrameElement) => {
+        element.style.cssText =
+            'width: 400.5px; height: 150.5px; border: 1px solid; padding: 2.5px';
+        element.contentDocument!.querySelector<HTMLElement>(
+            '#frame-text',
+        )!.style.marginLeft = '300px';
+    });
+    const target = page.frameLocator('#same-frame').locator('#frame-text');
+    await toggle(page);
+    await target.hover();
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    expect(
+        await page.locator(overlaySelector + ' .outline').boundingBox(),
+    ).toEqual(await target.boundingBox());
+});
+
+test('picks up frames added and reloaded during inspection and cleans up on toggles', async ({
+    page,
+    toggle,
+}) => {
+    await toggle(page);
+    await page.evaluate(() => {
+        const frame = document.createElement('iframe');
+        frame.id = 'new-frame';
+        frame.src = '/frame.html';
+        document.querySelector('#same-frame')!.after(frame);
+    });
+    const preview = page.frameLocator('#new-frame');
+    await preview.locator('#frame-text').hover();
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.locator('#new-frame').evaluate((element: HTMLIFrameElement) => {
+        element.src = '/frame.html?reload';
+    });
+    await expect(page.locator(tooltipSelector)).toContainText(
+        'Element no longer available',
+    );
+    await preview.locator('#frame-action').click();
+    await expect(page.locator(overlaySelector)).toHaveAttribute(
+        'data-pinned',
+        'false',
+    );
+    await preview.locator('#frame-text').hover();
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    await toggle(page);
+    await expect(page.locator(overlaySelector)).toHaveCount(0);
+    await toggle(page);
+    await preview.locator('#frame-action').hover();
+    await expect(page.locator(tooltipSelector)).toContainText('#frame-action');
+    await preview.locator('#frame-action').click();
+    await expect(page.locator(overlaySelector)).toHaveAttribute(
+        'data-pinned',
+        'true',
+    );
+    expect(
+        await preview
+            .locator('body')
+            .evaluate(() => (window as unknown as { actions: number }).actions),
+    ).toBe(0);
+});
+
+test('declines transparent frame canvases and embedding group effects', async ({
+    page,
+    toggle,
+}) => {
+    await toggle(page);
+    const target = page.frameLocator('#same-frame').locator('#frame-text');
+    await page.locator('#same-frame').evaluate((element: HTMLIFrameElement) => {
+        element.contentDocument!.documentElement.style.background =
+            'transparent';
+    });
+    await target.hover();
+    await expect(page.locator(tooltipSelector)).toContainText(
+        'Transparent iframe background',
+    );
+    for (const style of [
+        'opacity: 0.5',
+        'filter: brightness(0.5)',
+        'mix-blend-mode: multiply',
+    ]) {
+        await page
+            .locator('#same-frame')
+            .evaluate((element: HTMLIFrameElement, style) => {
+                element.contentDocument!.documentElement.style.background =
+                    'white';
+                element.style.cssText = style;
+            }, style);
+        await target.hover();
+        await expect(page.locator(tooltipSelector)).toHaveAttribute(
+            'data-status',
+            'indeterminate',
+        );
+        await expect(page.locator(tooltipSelector)).not.toContainText('Pass');
+    }
 });
 
 test('keeps overlay above dialogs and popovers before/during inspection, including pinned', async ({
