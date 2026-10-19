@@ -18,12 +18,24 @@ export function ancestry(element: Element): Element[] {
     return elements;
 }
 
-// The overlay is pointer-transparent, so hit testing never returns it.
+// Skip the overlay's pointer shield to find the page element beneath it.
 export function targetAt(x: number, y: number): Element | null {
-    let target = document.elementFromPoint(x, y);
+    let target =
+        document
+            .elementsFromPoint(x, y)
+            .find(
+                (element) => element.localName !== 'contrast-inspector-overlay',
+            ) ?? null;
     while (target) {
         if (target.shadowRoot) {
+            // Unlike elementsFromPoint, elementFromPoint preserves slotted text ownership.
+            // Briefly exclude our shield from this synchronous hit test.
+            const shield = document
+                .querySelector('contrast-inspector-overlay')
+                ?.shadowRoot?.querySelector<HTMLElement>('.shield');
+            shield?.style.setProperty('pointer-events', 'none', 'important');
             const inner = target.shadowRoot.elementFromPoint(x, y);
+            shield?.style.removeProperty('pointer-events');
             if (inner && inner !== target) {
                 target = inner;
                 continue;
@@ -45,6 +57,41 @@ export function targetAt(x: number, y: number): Element | null {
         break;
     }
     return target;
+}
+
+export function scrollerAt(x: number, y: number, dx: number, dy: number) {
+    for (
+        let element = targetAt(x, y);
+        element;
+        element =
+            composedParent(element) ??
+            element.ownerDocument.defaultView?.frameElement ??
+            null
+    ) {
+        const style =
+            element.ownerDocument.defaultView!.getComputedStyle(element);
+        const root = element === element.ownerDocument.scrollingElement;
+        const scrollsX = root
+            ? !['hidden', 'clip'].includes(style.overflowX)
+            : ['auto', 'scroll'].includes(style.overflowX);
+        const scrollsY = root
+            ? !['hidden', 'clip'].includes(style.overflowY)
+            : ['auto', 'scroll'].includes(style.overflowY);
+        if (
+            (scrollsX &&
+                ((dx > 0 &&
+                    element.scrollLeft + element.clientWidth <
+                        element.scrollWidth) ||
+                    (dx < 0 && element.scrollLeft > 0))) ||
+            (scrollsY &&
+                ((dy > 0 &&
+                    element.scrollTop + element.clientHeight <
+                        element.scrollHeight) ||
+                    (dy < 0 && element.scrollTop > 0)))
+        )
+            return element;
+    }
+    return null;
 }
 
 // Frame borders and CSS scaling (including Storybook's zoom) affect viewport coordinates.

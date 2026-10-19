@@ -28,6 +28,40 @@ function ownTextRects(element: Element, style: CSSStyleDeclaration): DOMRect[] {
     });
 }
 
+export function resolveTextTarget(target: Element): Element {
+    if (
+        svgOrCanvasText(target) ||
+        ownTextRects(target, getComputedStyle(textParent(target))).length
+    )
+        return target;
+
+    const owners = new Set<Element>();
+    function visit(node: Node) {
+        if (owners.size > 1) return;
+        if (node.nodeType === Node.TEXT_NODE) {
+            const owner = node.parentElement;
+            if (
+                owner &&
+                node.textContent?.trim() &&
+                ownTextRects(owner, getComputedStyle(textParent(owner))).length
+            )
+                owners.add(owner);
+            return;
+        }
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        const element = node as Element;
+        // Follow the rendered tree: assigned nodes replace a slot's fallback children.
+        const children =
+            element instanceof
+            element.ownerDocument.defaultView!.HTMLSlotElement
+                ? (element as HTMLSlotElement).assignedNodes({ flatten: true })
+                : (element.shadowRoot ?? element).childNodes;
+        for (const child of children) visit(child);
+    }
+    visit(target);
+    return owners.size === 1 ? owners.values().next().value! : target;
+}
+
 // Effects that change how an element and everything inside it is painted.
 function groupEffect(style: CSSStyleDeclaration): string | undefined {
     if (Number(style.opacity) !== 1) return 'Ancestor or element opacity';

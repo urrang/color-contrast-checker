@@ -37,34 +37,58 @@ test('action toggles the built script repeatedly and Escape cleans up', async ({
     expect((await actionCounts(page)).click).toBe(1);
 });
 
-test('observes native hover and CSS transitions without blocking pointer movement', async ({
+test('blocks native hover unless Shift is held and waits for transitions on the same target', async ({
     page,
     toggle,
 }) => {
     await toggle(page);
-    await point(page, '#hover');
-    await expect(page.locator('#hover')).toHaveCSS(
-        'background-color',
-        'rgb(255, 255, 255)',
-    );
-    await expect(page.locator(tooltipSelector)).toContainText('#000000');
-    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await point(page, '#transition');
-    await expect(page.locator('#transition')).toHaveCSS(
-        'color',
-        'rgb(0, 0, 0)',
-    );
-    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await expect(page.locator(tooltipSelector + ' .row').first()).toContainText(
-        '#000000',
-    );
+    for (const selector of ['#hover', '#transition']) {
+        await point(page, selector);
+        await expect(page.locator(selector)).toHaveCSS(
+            'background-color',
+            'rgb(0, 0, 0)',
+        );
+        await expect(
+            page.locator(tooltipSelector + ' .row').first(),
+        ).toContainText('#FFFFFF');
+        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+        await page.keyboard.down('Shift');
+        await point(page, selector, 1);
+        await expect(page.locator(selector)).toHaveCSS(
+            'background-color',
+            'rgb(255, 255, 255)',
+        );
+        await expect(
+            page.locator(tooltipSelector + ' .row').first(),
+        ).toContainText('#000000');
+        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+        await page.keyboard.up('Shift');
+        await point(page, selector, 2);
+        await expect(page.locator(selector)).toHaveCSS(
+            'background-color',
+            'rgb(0, 0, 0)',
+        );
+        await expect(
+            page.locator(tooltipSelector + ' .row').first(),
+        ).toContainText('#FFFFFF');
+        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+    }
     await point(page, '#hover-menu');
+    await expect(page.locator('#menu')).toBeHidden();
+    await page.keyboard.down('Shift');
+    await point(page, '#hover-menu', 1);
     await expect(page.locator('#menu')).toBeVisible();
     await point(page, '#menu');
     await expect(page.locator(tooltipSelector)).toHaveAttribute(
         'data-status',
         'assessed',
     );
+    await expect(
+        page.locator(tooltipSelector + ' .element-label'),
+    ).toContainText('#menu');
+    await page.keyboard.up('Shift');
+    await point(page, '#hover-menu', 2);
+    await expect(page.locator('#menu')).toBeHidden();
 });
 
 test('targets open shadow text, slotted text and display:contents ancestry', async ({
@@ -105,31 +129,12 @@ test('targets open shadow text, slotted text and display:contents ancestry', asy
     }
 });
 
-test('pin and unpin consume pointer/mouse sequences and preserve focus and snapshots', async ({
+test('blocks pointer and mouse actions unless Shift is held', async ({
     page,
     toggle,
 }) => {
-    await page.locator('#focus').focus();
     await toggle(page);
-    await point(page, '#hover');
-    const snapshot = await page.locator(tooltipSelector).textContent();
-    await page.mouse.click(200, 220);
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'true',
-    );
-    await point(page, '#pointer-action');
-    await expect(page.locator(tooltipSelector)).toContainText(snapshot!);
-    await page.mouse.click(750, 310);
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'false',
-    );
-    for (let i = 0; i < 2; i++) {
-        await point(page, '#pointer-action');
-        const box = await page.locator('#pointer-action').boundingBox();
-        await page.mouse.click(box!.x + 25, box!.y + 20);
-    }
+    await page.locator('#pointer-action').click({ force: true });
     expect(await actionCounts(page)).toEqual({
         pointerdown: 0,
         mousedown: 0,
@@ -138,14 +143,90 @@ test('pin and unpin consume pointer/mouse sequences and preserve focus and snaps
         click: 0,
         contextmenu: 0,
     });
-    await expect(page.locator('#focus')).toBeFocused();
-    await point(page, '#navigate');
-    const box = await page.locator('#navigate').boundingBox();
-    for (let i = 0; i < 2; i++)
-        await page.mouse.click(box!.x + 30, box!.y + 20);
-    expect(new URL(page.url()).hash).toBe('');
-    await page.locator('#pointer-action').click({ button: 'right' });
-    expect((await actionCounts(page)).contextmenu).toBe(1);
+    await page.keyboard.down('Shift');
+    await page.locator('#pointer-action').click();
+    expect(await actionCounts(page)).toEqual({
+        pointerdown: 1,
+        mousedown: 1,
+        pointerup: 1,
+        mouseup: 1,
+        click: 1,
+        contextmenu: 0,
+    });
+    await page.keyboard.up('Shift');
+});
+
+test('resolves slotted button labels from both padding and text', async ({
+    page,
+    toggle,
+}) => {
+    await toggle(page);
+    const button = page.locator('#slotted-text button');
+    const rect = (await button.boundingBox())!;
+    for (const x of [
+        rect.x + 2,
+        rect.x + rect.width / 2,
+        rect.x + rect.width - 2,
+    ]) {
+        await page.mouse.move(x, rect.y + rect.height / 2);
+        await expect(page.locator(tooltipSelector)).toContainText('9.45:1');
+        await expect(
+            page.locator(tooltipSelector + ' .element-label'),
+        ).toContainText('button-sample#slotted-text');
+    }
+});
+
+test('resolves one visible text owner through wrappers, shadow roots and slots', async ({
+    page,
+    toggle,
+}) => {
+    await page.locator('#descendant').evaluate((element) => {
+        element.innerHTML = `
+            <span hidden>Hidden text</span>
+            <span style="visibility:hidden">Invisible text</span>
+            <label-sample><span slot="label" id="resolved-label" style="color:#333">Nested label</span>Unassigned text</label-sample>`;
+        const host = element.querySelector('label-sample')!;
+        host.attachShadow({ mode: 'open' }).innerHTML =
+            '<inner-label></inner-label>';
+        host
+            .shadowRoot!.querySelector('inner-label')!
+            .attachShadow({ mode: 'open' }).innerHTML =
+            '<div style="background:#bce8dc"><slot name="label"><span>Unused fallback</span></slot></div>';
+        // Forward the outer slot through the nested component.
+        const slot = document.createElement('slot');
+        slot.name = 'label';
+        slot.slot = 'label';
+        host.shadowRoot!.querySelector('inner-label')!.append(slot);
+    });
+    await toggle(page);
+    await page.locator('#descendant').hover({
+        position: { x: 2, y: 2 },
+        force: true,
+    });
+    await expect(page.locator(tooltipSelector)).toContainText('9.45:1');
+    await expect(
+        page.locator(tooltipSelector + ' .element-label'),
+    ).toContainText('#resolved-label');
+});
+
+test('keeps containers with multiple text owners unselected', async ({
+    page,
+    toggle,
+}) => {
+    await page.locator('#descendant').evaluate((element) => {
+        element.innerHTML =
+            '<span id="first-label">First label</span><span style="color:red">Second label</span>';
+    });
+    await toggle(page);
+    await page.locator('#descendant').hover({
+        position: { x: 2, y: 2 },
+        force: true,
+    });
+    await expect(page.locator(tooltipSelector)).toContainText(
+        'No inspectable text',
+    );
+    await point(page, '#first-label');
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
 });
 
 test('separates no-text and unsupported text without ratio or badges', async ({
@@ -153,7 +234,7 @@ test('separates no-text and unsupported text without ratio or badges', async ({
     toggle,
 }) => {
     await toggle(page);
-    for (const selector of ['#empty', '#icon', '#descendant']) {
+    for (const selector of ['#empty', '#icon']) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toContainText(
             'No inspectable text',
@@ -174,7 +255,7 @@ test('separates no-text and unsupported text without ratio or badges', async ({
         );
         await expect(page.locator(tooltipSelector)).not.toContainText('Pass');
     }
-    for (const selector of ['#child', '#mixed']) {
+    for (const selector of ['#child', '#descendant', '#mixed']) {
         await point(page, selector);
         await expect(page.locator(tooltipSelector)).toHaveAttribute(
             'data-status',
@@ -265,7 +346,7 @@ for (const [mode, color] of [
     });
 }
 
-test('cross-origin iframe boundaries clear unpinned results and preserve pinned snapshots', async ({
+test('cross-origin iframe boundaries clear results', async ({
     page,
     toggle,
 }) => {
@@ -280,15 +361,6 @@ test('cross-origin iframe boundaries clear unpinned results and preserve pinned 
     await expect(
         page.frameLocator('#cross-frame').locator(overlaySelector),
     ).toHaveCount(0);
-    await point(page, '#plain');
-    await page.mouse.down();
-    await page.mouse.up();
-    await point(page, '#cross-frame');
-    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'true',
-    );
 });
 
 test('inspects same-origin frame text, shadow roots and native hover with one top-level overlay', async ({
@@ -298,13 +370,15 @@ test('inspects same-origin frame text, shadow roots and native hover with one to
     await toggle(page);
     const preview = page.frameLocator('#same-frame');
     for (const selector of ['#frame-text', '#frame-shadow', '#frame-action']) {
-        await preview.locator(selector).hover();
-        await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
+        await preview.locator(selector).hover({ force: true });
+        await expect(page.locator(tooltipSelector)).toContainText(
+            selector === '#frame-action' ? '7.46:1' : '21.00:1',
+        );
         await expect(
             page.locator(tooltipSelector + ' .element-label'),
         ).toContainText(selector);
     }
-    await preview.locator('svg text').hover();
+    await preview.locator('svg text').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText(
         'SVG or canvas text',
     );
@@ -313,28 +387,20 @@ test('inspects same-origin frame text, shadow roots and native hover with one to
         element.ownerDocument.documentElement.style.background = '#111';
         element.style.color = 'white';
     });
-    await preview.locator('#frame-text').hover();
+    await preview.locator('#frame-text').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('#111111');
     await preview.locator('#frame-text').evaluate((element: HTMLElement) => {
         element.ownerDocument.documentElement.style.background = 'white';
         element.style.color = 'black';
     });
-    await preview.locator('#frame-text').hover();
+    await preview.locator('#frame-text').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await page.mouse.down();
-    await page.mouse.up();
-    await point(page, '#fail');
+    await preview.locator('#frame-action').click({ force: true });
+    await expect(page.locator(tooltipSelector)).toContainText('7.46:1');
+    await page.keyboard.down('Shift');
+    await preview.locator('#frame-action').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await preview.locator('#frame-action').click();
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'false',
-    );
-    await preview.locator('#frame-action').click();
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'true',
-    );
+    await page.keyboard.up('Shift');
     expect(
         await preview
             .locator('body')
@@ -360,6 +426,11 @@ test('aligns nested frame targets with borders, padding, zoom and scrolling', as
             'height: 250px; width: 400px; border: 6px solid; padding: 5px; transform: scale(0.75); transform-origin: top left';
         const nested = element.contentDocument!.createElement('iframe');
         nested.src = '/frame.html';
+        nested.addEventListener('load', () => {
+            nested.contentDocument!.querySelector<HTMLElement>(
+                '#frame-text',
+            )!.style.height = '60px';
+        });
         nested.style.cssText = 'height: 130px; width: 250px; border: 4px solid';
         element.contentDocument!.body.append(nested);
     });
@@ -369,10 +440,8 @@ test('aligns nested frame targets with borders, padding, zoom and scrolling', as
         .locator('#frame-text');
     await expect(target).toBeVisible();
     await toggle(page);
-    await target.hover();
+    await target.hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await page.mouse.down();
-    await page.mouse.up();
     await page
         .locator('#same-frame')
         .evaluate((element: HTMLIFrameElement) =>
@@ -382,23 +451,18 @@ test('aligns nested frame targets with borders, padding, zoom and scrolling', as
     await expect
         .poll(() => page.locator(overlaySelector + ' .outline').boundingBox())
         .toEqual(box);
-    await page.mouse.wheel(0, 40);
-    await expect
-        .poll(async () => {
-            const targetBox = await target.boundingBox();
-            const outlineBox = await page
-                .locator(overlaySelector + ' .outline')
-                .boundingBox();
-            return Math.abs(targetBox!.y - outlineBox!.y);
-        })
-        .toBeLessThan(1);
     await toggle(page);
     await page.locator('#same-frame').evaluate((element: HTMLIFrameElement) => {
         element.style.transform = 'rotate(10deg)';
     });
     await toggle(page);
-    await target.hover();
-    await expect(page.locator(tooltipSelector)).toBeHidden();
+    await target.hover({ force: true });
+    await expect(page.locator(tooltipSelector)).toContainText(
+        'No inspectable text',
+    );
+    await expect(
+        page.locator(tooltipSelector + ' .element-label'),
+    ).toContainText('#same-frame');
 });
 
 test('aligns targets in frames with fractional sizes', async ({
@@ -414,7 +478,7 @@ test('aligns targets in frames with fractional sizes', async ({
     });
     const target = page.frameLocator('#same-frame').locator('#frame-text');
     await toggle(page);
-    await target.hover();
+    await target.hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
     expect(
         await page.locator(overlaySelector + ' .outline').boundingBox(),
@@ -433,38 +497,55 @@ test('picks up frames added and reloaded during inspection and cleans up on togg
         document.querySelector('#same-frame')!.after(frame);
     });
     const preview = page.frameLocator('#new-frame');
-    await preview.locator('#frame-text').hover();
+    await preview.locator('#frame-text').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
-    await page.mouse.down();
-    await page.mouse.up();
     await page.locator('#new-frame').evaluate((element: HTMLIFrameElement) => {
         element.src = '/frame.html?reload';
     });
-    await expect(page.locator(tooltipSelector)).toContainText(
-        'Element no longer available',
-    );
-    await preview.locator('#frame-action').click();
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'false',
-    );
-    await preview.locator('#frame-text').hover();
+    await preview.locator('#frame-text').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
     await toggle(page);
     await expect(page.locator(overlaySelector)).toHaveCount(0);
     await toggle(page);
-    await preview.locator('#frame-action').hover();
+    await preview.locator('#frame-action').hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText('#frame-action');
-    await preview.locator('#frame-action').click();
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'true',
-    );
+    await preview.locator('#frame-action').click({ force: true });
     expect(
         await preview
             .locator('body')
             .evaluate(() => (window as unknown as { actions: number }).actions),
     ).toBe(0);
+});
+
+test('forwards wheel scrolling to inner containers and frame viewports', async ({
+    page,
+    toggle,
+}) => {
+    await page.locator('#plain').evaluate((element: HTMLElement) => {
+        element.style.cssText = 'overflow: auto; height: 80px';
+        element.innerHTML = '<div style="height: 500px">Scrollable text</div>';
+    });
+    const preview = page.frameLocator('#same-frame');
+    await preview.locator('body').evaluate((element) => {
+        element.style.height = '500px';
+    });
+    await toggle(page);
+    await point(page, '#plain');
+    let pageScroll = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, 50);
+    await expect
+        .poll(() =>
+            page.locator('#plain').evaluate((element) => element.scrollTop),
+        )
+        .toBe(50);
+    expect(await page.evaluate(() => scrollY)).toBe(pageScroll);
+    await preview.locator('#frame-text').hover({ force: true });
+    pageScroll = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, 40);
+    await expect
+        .poll(() => preview.locator('body').evaluate(() => scrollY))
+        .toBe(40);
+    expect(await page.evaluate(() => scrollY)).toBe(pageScroll);
 });
 
 test('declines transparent frame canvases and embedding group effects', async ({
@@ -477,7 +558,7 @@ test('declines transparent frame canvases and embedding group effects', async ({
         element.contentDocument!.documentElement.style.background =
             'transparent';
     });
-    await target.hover();
+    await target.hover({ force: true });
     await expect(page.locator(tooltipSelector)).toContainText(
         'Transparent iframe background',
     );
@@ -493,7 +574,7 @@ test('declines transparent frame canvases and embedding group effects', async ({
                     'white';
                 element.style.cssText = style;
             }, style);
-        await target.hover();
+        await target.hover({ force: true });
         await expect(page.locator(tooltipSelector)).toHaveAttribute(
             'data-status',
             'indeterminate',
@@ -502,7 +583,7 @@ test('declines transparent frame canvases and embedding group effects', async ({
     }
 });
 
-test('keeps overlay above dialogs and popovers before/during inspection, including pinned', async ({
+test('keeps overlay above dialogs and popovers before and during inspection', async ({
     page,
     toggle,
 }) => {
@@ -516,8 +597,6 @@ test('keeps overlay above dialogs and popovers before/during inspection, includi
         .locator('#dialog')
         .evaluate((element: HTMLDialogElement) => element.close());
     await point(page, '#plain');
-    await page.mouse.down();
-    await page.mouse.up();
     await page
         .locator('#dialog')
         .evaluate((element: HTMLDialogElement) => element.showModal());
@@ -530,9 +609,8 @@ test('keeps overlay above dialogs and popovers before/during inspection, includi
     });
     await expect(page.locator('#dialog')).toBeVisible();
     await expect(page.locator('#page-popover')).toBeVisible();
-    await expect(page.locator(tooltipSelector)).toContainText(
-        'Pinned snapshot',
-    );
+    await point(page, '#dialog-text');
+    await expect(page.locator(tooltipSelector)).toContainText('21.00:1');
     await expect
         .poll(async () =>
             page.evaluate(() => {
@@ -541,7 +619,7 @@ test('keeps overlay above dialogs and popovers before/during inspection, includi
                 )!;
                 const tooltip = host.shadowRoot!.querySelector('.tooltip')!;
                 const rect = tooltip.getBoundingClientRect();
-                // Pointer transparency plus browser hit testing proves the page stays reachable.
+                // A modal dialog makes the overlay inert, so hit testing reaches the page.
                 return {
                     popover: host.matches(':popover-open'),
                     pointer: getComputedStyle(host).pointerEvents,
@@ -570,8 +648,6 @@ test('updates shadow mutations and handles removal and popovers inside shadow ro
     await expect(page.locator(tooltipSelector + ' .row').first()).toContainText(
         '#000000',
     );
-    await page.mouse.down();
-    await page.mouse.up();
     await page.locator('#shadow').evaluate((element) => {
         const popover = document.createElement('div');
         popover.setAttribute('popover', 'manual');
@@ -580,20 +656,18 @@ test('updates shadow mutations and handles removal and popovers inside shadow ro
         popover.showPopover();
     });
     await expect(page.locator('#shadow [popover]')).toBeVisible();
-    await expect(page.locator(overlaySelector)).toHaveAttribute(
-        'data-pinned',
-        'true',
-    );
+    await point(page, '#shadow #shadow-text', 2);
+    await expect(page.locator(tooltipSelector)).toContainText('#000000');
     await page
         .locator('#shadow #shadow-text')
         .evaluate((element) => element.remove());
     await page.mouse.move(5, 5);
-    await expect(page.locator(tooltipSelector)).toContainText(
-        'Element no longer available',
-    );
+    await expect(
+        page.locator(tooltipSelector + ' .element-label'),
+    ).not.toContainText('#shadow-text');
 });
 
-test('positions in viewport corners and follows pinned scrolling, resize and removal', async ({
+test('positions in viewport corners and follows scrolling and resize', async ({
     page,
     toggle,
 }) => {
@@ -603,9 +677,11 @@ test('positions in viewport corners and follows pinned scrolling, resize and rem
         'data-status',
         'assessed',
     );
-    await page.mouse.down();
-    await page.mouse.up();
-    await page.mouse.wheel(0, -100);
+    const pageScroll = await page.evaluate(() => scrollY);
+    await page.mouse.wheel(0, -4);
+    await expect
+        .poll(() => page.evaluate(() => scrollY))
+        .toBeLessThan(pageScroll);
     await expect
         .poll(() =>
             page.locator('#bottom').evaluate((element) => {
@@ -633,11 +709,6 @@ test('positions in viewport corners and follows pinned scrolling, resize and rem
             }),
         )
         .toBe(true);
-    await page.locator('#bottom').evaluate((element) => element.remove());
-    await page.mouse.move(5, 5);
-    await expect(page.locator(tooltipSelector)).toContainText(
-        'Element no longer available',
-    );
     await page.keyboard.press('Escape');
     await expect(page.locator(overlaySelector)).toHaveCount(0);
 });

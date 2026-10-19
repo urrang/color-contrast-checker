@@ -1,7 +1,6 @@
-import { assessElement, textParent } from './assessment';
-import { createOverlay, type ElementLabel } from './overlay';
-import { ancestry, targetAt, toTopRect } from './targeting';
-import type { Result } from '../core/types';
+import { assessElement, resolveTextTarget, textParent } from './assessment';
+import { createOverlay } from './overlay';
+import { ancestry, scrollerAt, targetAt, toTopRect } from './targeting';
 
 declare global {
     interface Window {
@@ -9,33 +8,15 @@ declare global {
     }
 }
 
-const clickEvents = [
-    'pointerdown',
-    'pointerup',
-    'mousedown',
-    'mouseup',
-    'click',
-    'dblclick',
-] as const;
-
 function start() {
     const overlay = createOverlay();
     const controller = new AbortController();
     const { signal } = controller;
     let target: Element | null = null;
-    let result: Result | null = null;
-    let targetLabel: ElementLabel | null = null;
-    let pinned = false;
+    let targetHovered = false;
     let pointer: { x: number; y: number } | null = null;
     let frame = 0;
     const documents = new WeakSet<Document>();
-
-    function available() {
-        return Boolean(
-            target?.isConnected &&
-            toTopRect(target.ownerDocument, target.getBoundingClientRect()),
-        );
-    }
 
     // Script-driven page changes are picked up on the next pointer movement or scroll.
     function update() {
@@ -45,54 +26,37 @@ function start() {
             return;
         }
         const { x, y } = pointer;
-        if (!pinned) {
-            const next = targetAt(x, y);
-            if (next) listen(next.ownerDocument);
-            result = next ? assessElement(next) : null;
-            targetLabel = next
-                ? {
-                      tag: next.localName,
-                      id: next.id,
-                      classes: Array.from(next.classList),
-                  }
-                : null;
-            // Hovering a new target can start transitions on it or its ancestors; reassess when they end.
-            if (next && next !== target) {
-                const running = ancestry(textParent(next)).flatMap((element) =>
-                    element.getAnimations(),
-                );
-                Promise.allSettled(
-                    running.map((animation) => animation.finished),
-                ).then(schedule);
-            }
-            target = next;
+        const hit = targetAt(x, y);
+        const next = hit ? resolveTextTarget(hit) : null;
+        if (next) listen(next.ownerDocument);
+        const result = next ? assessElement(next) : null;
+        const targetLabel = next
+            ? {
+                  tag: next.localName,
+                  id: next.id,
+                  classes: Array.from(next.classList),
+              }
+            : null;
+        const hovered = next?.matches(':hover') ?? false;
+        // A new target or Shift changing its hover state can start transitions on its ancestry.
+        if (next && (next !== target || hovered !== targetHovered)) {
+            const running = ancestry(textParent(next)).flatMap((element) =>
+                element.getAnimations(),
+            );
+            Promise.allSettled(
+                running.map((animation) => animation.finished),
+            ).then(schedule);
         }
+        target = next;
+        targetHovered = hovered;
         // Puts the overlay back above dialogs and popovers the page opened since.
         overlay.raise();
-        overlay.render(result, pinned, pinned && !available(), targetLabel);
+        overlay.render(result, targetLabel);
         overlay.position(target, x, y);
     }
 
     function schedule() {
         if (!frame && !signal.aborted) frame = requestAnimationFrame(update);
-    }
-
-    function clickSequence(event: MouseEvent) {
-        if (
-            !pointer ||
-            event.button !== 0 ||
-            (event.type === 'click' && event.detail === 0)
-        )
-            return;
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        if (event.type !== 'click' || !target) return;
-        // Pinning keeps the result already on screen; unpinning reassesses at the click position.
-        pinned = !pinned;
-        if (!pinned) {
-            pointer = eventPoint(event);
-        }
-        schedule();
     }
 
     function stop() {
@@ -112,7 +76,10 @@ function start() {
     }
 
     function move(event: PointerEvent) {
-        if (!pinned) pointer = eventPoint(event);
+        // Layout-triggered pointerout events can report shiftKey=false while Shift is held.
+        if (event.type === 'pointermove')
+            overlay.letHoverThrough(event.shiftKey);
+        pointer = eventPoint(event);
         schedule();
     }
 
@@ -150,20 +117,20 @@ function start() {
             passive: true,
             signal,
         });
-        for (const type of clickEvents) {
-            view.addEventListener(type, clickSequence, {
-                capture: true,
-                signal,
-            });
-        }
         view.addEventListener(
             'keydown',
             (event) => {
+                overlay.letHoverThrough(event.shiftKey);
                 if (event.key !== 'Escape') return;
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 stop();
             },
+            { capture: true, signal },
+        );
+        view.addEventListener(
+            'keyup',
+            (event) => overlay.letHoverThrough(event.shiftKey),
             { capture: true, signal },
         );
         view.addEventListener('scroll', schedule, {
@@ -176,6 +143,26 @@ function start() {
     }
 
     listen(document);
+    window.addEventListener(
+        'wheel',
+        (event) => {
+            if (event.target !== overlay.host || event.ctrlKey) return;
+            const scroller = scrollerAt(
+                event.clientX,
+                event.clientY,
+                event.deltaX,
+                event.deltaY,
+            );
+            if (!scroller || scroller === document.scrollingElement) return;
+            event.preventDefault();
+            scroller.scrollBy({
+                left: event.deltaX,
+                top: event.deltaY,
+                behavior: 'instant',
+            });
+        },
+        { capture: true, passive: false, signal },
+    );
     window.addEventListener('pagehide', stop, { once: true, signal });
     window.__contrastInspector = { stop };
 }

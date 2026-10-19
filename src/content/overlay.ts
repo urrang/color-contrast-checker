@@ -26,13 +26,15 @@ export function createOverlay() {
     const shadow = host.attachShadow({ mode: 'open' });
     const css = document.createElement('style');
     css.textContent = styles;
+    const shield = document.createElement('div');
+    shield.className = 'shield';
     const outline = document.createElement('div');
     outline.className = 'outline';
     outline.hidden = true;
     const tooltip = document.createElement('div');
     tooltip.className = 'tooltip';
     tooltip.hidden = true;
-    shadow.append(css, outline, tooltip);
+    shadow.append(css, shield, outline, tooltip);
     document.documentElement.append(host);
     host.showPopover();
 
@@ -61,18 +63,10 @@ export function createOverlay() {
         tooltip.append(line);
     }
 
-    function render(
-        result: Result | null,
-        pinned: boolean,
-        unavailable: boolean,
-        targetLabel: ElementLabel | null,
-    ) {
+    function render(result: Result | null, targetLabel: ElementLabel | null) {
         tooltip.hidden = false;
         tooltip.replaceChildren();
-        tooltip.dataset.status = unavailable
-            ? 'unavailable'
-            : (result?.status ?? 'ready');
-        host.dataset.pinned = String(pinned);
+        tooltip.dataset.status = result?.status ?? 'ready';
         if (targetLabel) {
             const header = document.createElement('div');
             header.className = 'element-header';
@@ -95,8 +89,7 @@ export function createOverlay() {
             header.append(label);
             tooltip.append(header);
         }
-        if (unavailable) row('Status', 'Element no longer available');
-        else if (!result) row('Status', 'Point at text to inspect');
+        if (!result) row('Status', 'Point at text to inspect');
         else if (result.status === 'no-text')
             row('Status', 'No inspectable text');
         else if (result.status === 'indeterminate') {
@@ -127,13 +120,10 @@ export function createOverlay() {
                 result.aaa,
             );
         }
-        if (pinned) {
-            const status = document.createElement('div');
-            status.className = 'status';
-            status.textContent =
-                'Pinned snapshot · click to resume · Esc to exit';
-            tooltip.append(status);
-        }
+        const hint = document.createElement('div');
+        hint.className = 'status';
+        hint.textContent = 'Hold Shift to allow hover and clicks.';
+        tooltip.append(hint);
     }
 
     function position(target: Element | null, x: number, y: number) {
@@ -171,6 +161,10 @@ export function createOverlay() {
     }
 
     return {
+        host,
+        letHoverThrough: (on: boolean) => {
+            shield.hidden = on;
+        },
         render,
         position,
         raise,
